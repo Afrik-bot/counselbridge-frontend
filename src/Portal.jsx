@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { AuthAPI, MattersAPI, MessagesAPI, DocumentsAPI, InvoicesAPI, AIAPI, TokenStore, normalizeMatter, normalizeMessages, normalizeInvoices, normalizeAIQueue } from "./useAPI.js";
 
 // ─── DESIGN SYSTEM ────────────────────────────────────────────────────────────
 const css = `
@@ -572,7 +573,7 @@ const VideoCall = ({ contact, onClose, isClient }) => {
           {isClient ? "Join Your Consultation" : `Call with ${contact?.name || "Client"}`}
         </div>
         <div style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", marginBottom: 28 }}>
-          {isClient ? `with Alex Rivera · Rivera & Associates` : contact?.matter || "Video Consultation"}
+          {isClient ? `with Alex Rivera · {currentFirm?.name || "Your Firm"}` : contact?.matter || "Video Consultation"}
         </div>
         {permError && (
           <div style={{ background: "rgba(220,38,38,0.15)", border: "1px solid rgba(220,38,38,0.4)", borderRadius: 10, padding: "12px 16px", marginBottom: 20, fontSize: 13.5, color: "#FCA5A5", textAlign: "left" }}>
@@ -807,19 +808,24 @@ const VideoCall = ({ contact, onClose, isClient }) => {
 
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function CounselBridge() {
-  const [view, setView] = useState("login"); // login | attorney | client
+  const [view, setView] = useState(() => {
+    const token = localStorage.getItem("cb_token");
+    const user = (() => { try { return JSON.parse(localStorage.getItem("cb_user")); } catch { return null; } })();
+    if (token && user) return user.role === "CLIENT" ? "client" : "attorney";
+    return "login";
+  });
   const [loginType, setLoginType] = useState("attorney");
   const [activePage, setActivePage] = useState("dashboard");
   const [selectedMatter, setSelectedMatter] = useState(null);
   const [matterTab, setMatterTab] = useState("overview");
   const [showAIModal, setShowAIModal] = useState(null);
-  const [aiQueue, setAiQueue] = useState(AI_QUEUE);
-  const [messages, setMessages] = useState(MESSAGES);
+  const [aiQueue, setAiQueue] = useState([]);
+  const [messages, setMessages] = useState({});
   const [newMsg, setNewMsg] = useState("");
   const [showInternal, setShowInternal] = useState(false);
   const [aiTyping, setAiTyping] = useState(false);
   const [aiDraft, setAiDraft] = useState("");
-  const [matters, setMatters] = useState(MATTERS);
+  const [matters, setMatters] = useState([]);
   const [notifications, setNotifications] = useState(3);
   const [searchQ, setSearchQ] = useState("");
   const [clientMatterId] = useState(1);
@@ -834,6 +840,15 @@ export default function CounselBridge() {
   const [showVideoCall, setShowVideoCall] = useState(false);
   const [videoCallContact, setVideoCallContact] = useState(null);
   const [showNewMatterModal, setShowNewMatterModal] = useState(false);
+  const [currentUser, setCurrentUser] = useState(() => { try { return JSON.parse(localStorage.getItem("cb_user")); } catch { return null; } });
+  const [currentFirm, setCurrentFirm] = useState(() => { try { return JSON.parse(localStorage.getItem("cb_firm")); } catch { return null; } });
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [clientMatter, setClientMatter] = useState(null);
+  const [invoices, setInvoices] = useState([]);
+  const [loading, setLoading] = useState(false);
   const msgEndRef = useRef(null);
 
   useEffect(() => {
@@ -850,31 +865,87 @@ export default function CounselBridge() {
     msgEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, chatHistory]);
 
-  const generateAIDraft = () => {
+  // Load data when view changes
+  useEffect(() => {
+    if (view === "attorney" && AuthAPI.isLoggedIn()) {
+      setLoading(true);
+      Promise.all([MattersAPI.list(), AIAPI.queue(), InvoicesAPI.list()])
+        .then(([mattersRes, queueRes, invoicesRes]) => {
+          const normalized = (mattersRes?.matters || []).map(normalizeMatter);
+          setMatters(normalized);
+          setAiQueue(normalizeAIQueue(queueRes?.queue || []));
+          setInvoices(normalizeInvoices(invoicesRes?.invoices || []));
+          setNotifications((queueRes?.queue || []).length);
+        })
+        .catch(console.error)
+        .finally(() => setLoading(false));
+    }
+    if (view === "client" && AuthAPI.isLoggedIn()) {
+      setLoading(true);
+      MattersAPI.list()
+        .then(res => {
+          const userMatters = res?.matters || [];
+          if (userMatters.length > 0) {
+            return MattersAPI.get(userMatters[0].id).then(full => {
+              const normalized = normalizeMatter(full?.matter);
+              setClientMatter(normalized);
+              if (full?.matter?.threads) {
+                const msgs = normalizeMessages(full.matter.threads, TokenStore.getUser()?.id);
+                setMessages(msgs);
+              }
+              return InvoicesAPI.clientList();
+            }).then(invRes => {
+              setInvoices(normalizeInvoices(invRes?.invoices || []));
+            });
+          }
+        })
+        .catch(console.error)
+        .finally(() => setLoading(false));
+    }
+  }, [view]);
+
+  // Load messages when matter selected
+  useEffect(() => {
+    if (selectedMatter?.id && view === "attorney" && AuthAPI.isLoggedIn()) {
+      MessagesAPI.threads(selectedMatter.id).then(res => {
+        if (res?.threads) {
+          const msgs = normalizeMessages(res.threads, TokenStore.getUser()?.id);
+          setMessages(prev => ({ ...prev, ...msgs }));
+          const firstThread = res.threads.find(t => !t.isInternal);
+          const internalThread = res.threads.find(t => t.isInternal);
+          if (firstThread) setSelectedMatter(m => ({ ...m, threadId: firstThread.id, internalThreadId: internalThread?.id }));
+        }
+      }).catch(console.error);
+    }
+  }, [selectedMatter?.id]);
+
+  const generateAIDraft = async () => {
     if (!selectedMatter) return;
     setAiTyping(true);
     setAiDraft("");
-    const drafts = {
-      1: "Hi Sarah, thank you for uploading those documents — I can confirm we received the bank statements and both tax returns. I'm still waiting on the mortgage statement, your retirement account statements, and any business ownership documents. Could you upload those as soon as possible? We have until March 20 to file.",
-      3: "Hi Amy, I wanted to follow up on the discovery letter from opposing counsel. I've reviewed it thoroughly and will be filing our response by end of this week. Your court date on April 3rd remains confirmed. Please let me know if you have any questions.",
-    };
-    setTimeout(() => {
-      setAiTyping(false);
-      setAiDraft(drafts[selectedMatter.id] || "I've reviewed your recent message and wanted to provide an update on your matter. Please feel free to reach out if you have any questions.");
-    }, 1800);
+    try {
+      const res = await AIAPI.draftMessage(selectedMatter.id, "Recent client messages");
+      setAiDraft(res?.draft || "I've reviewed your recent message and wanted to provide an update on your matter. Please feel free to reach out if you have any questions.");
+    } catch {
+      setAiDraft("I've reviewed your recent message and wanted to provide an update on your matter. Please feel free to reach out if you have any questions.");
+    }
+    setAiTyping(false);
   };
 
-  const sendMessage = () => {
+  const sendMessage = async () => {
     if (!newMsg.trim() && !aiDraft.trim()) return;
     const body = aiDraft || newMsg;
+    const threadId = showInternal ? selectedMatter?.internalThreadId : selectedMatter?.threadId;
+    const userName = currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "Attorney";
     const newMessages = { ...messages };
     if (!newMessages[selectedMatter.id]) newMessages[selectedMatter.id] = [];
     newMessages[selectedMatter.id] = [...newMessages[selectedMatter.id], {
-      id: Date.now(), sender: "attorney", name: "Alex Rivera", body, time: "Just now", read: true, internal: showInternal, aiGenerated: !!aiDraft
+      id: Date.now(), sender: "attorney", name: userName, body, time: "Just now", read: true, internal: showInternal, aiGenerated: !!aiDraft
     }];
     setMessages(newMessages);
     setNewMsg("");
     setAiDraft("");
+    if (threadId) MessagesAPI.send(threadId, body, showInternal).catch(console.error);
   };
 
   const sendClientChat = async () => {
@@ -884,34 +955,32 @@ export default function CounselBridge() {
     setChatHistory(h => [...h, { role: "user", text: userMsg }]);
     setAiChatLoading(true);
     try {
-      const resp = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1000,
-          system: `You are the AI assistant for CounselBridge, a legal client portal. The client is Sarah Johnson, who has an active divorce proceeding (Family Law). You can help with general process questions and case status. You MUST NOT provide legal advice, predict outcomes, or advise on legal strategy. If asked for legal advice, say: "That's a great question for your attorney. I can help with general process questions — for specific legal guidance, please message Alex Rivera directly." Keep responses concise, warm, and in plain English. Current case status: Active. Next step: Upload mortgage statement, retirement account statements, and business documents.`,
-          messages: [{ role: "user", content: userMsg }]
-        })
-      });
-      const data = await resp.json();
-      const text = data.content?.map(c => c.text || "").join("") || "I'm sorry, I couldn't process that. Please message your attorney directly.";
-      setChatHistory(h => [...h, { role: "ai", text }]);
+      const res = await AIAPI.clientChat(userMsg, chatHistory.map(h => ({ role: h.role === "ai" ? "assistant" : "user", content: h.text })));
+      setChatHistory(h => [...h, { role: "ai", text: res?.response || "I'm sorry, I couldn't process that. Please message your attorney directly." }]);
     } catch {
       setChatHistory(h => [...h, { role: "ai", text: "I'm having trouble connecting right now. Please message your attorney directly for assistance." }]);
     }
     setAiChatLoading(false);
   };
 
-  const approveAI = (id, text) => {
+  const approveAI = async (id) => {
+    try { await AIAPI.approve(id); } catch {}
     setAiQueue(q => q.filter(i => i.id !== id));
     setShowAIModal(null);
     setNotifications(n => Math.max(0, n - 1));
   };
 
-  const rejectAI = (id) => {
+  const rejectAI = async (id) => {
+    try { await AIAPI.reject(id); } catch {}
     setAiQueue(q => q.filter(i => i.id !== id));
     setShowAIModal(null);
+  };
+
+  const handleLogout = async () => {
+    await AuthAPI.logout();
+    setCurrentUser(null); setCurrentFirm(null);
+    setMatters([]); setMessages({}); setInvoices([]); setAiQueue([]);
+    setView("login");
   };
 
   const filteredMatters = matters.filter(m =>
@@ -919,94 +988,122 @@ export default function CounselBridge() {
   );
 
   // ─── LOGIN SCREEN ──────────────────────────────────────────────────────────
-  if (view === "login") return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #0F2240 0%, #1B3A5C 50%, #0F2240 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, position: "relative", overflow: "hidden" }}>
-      <style>{css}</style>
-      {/* Background decoration */}
-      <div style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(circle at 20% 80%, rgba(37,99,235,0.15) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(13,148,136,0.1) 0%, transparent 50%)", pointerEvents: "none" }} />
-      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "1px", background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)" }} />
+  if (view === "login") {
+    const handleLogin = async (e) => {
+      e?.preventDefault();
+      if (!loginEmail.trim() || !loginPassword.trim()) { setLoginError("Please enter your email and password."); return; }
+      setLoginLoading(true); setLoginError("");
+      try {
+        const data = await AuthAPI.login(loginEmail, loginPassword);
+        setCurrentUser(data.user);
+        setCurrentFirm(data.firm);
+        setView(data.user.role === "CLIENT" ? "client" : "attorney");
+        setActivePage("dashboard");
+      } catch (err) {
+        setLoginError(err.message || "Invalid email or password.");
+      }
+      setLoginLoading(false);
+    };
 
-      <div className="fade-in" style={{ width: "100%", maxWidth: 420 }}>
-        {/* Logo */}
-        <div style={{ textAlign: "center", marginBottom: 36 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 10 }}>
-            <div style={{ width: 42, height: 42, background: "var(--blue)", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Icon name="shield" size={22} color="white" />
-            </div>
-            <span style={{ fontFamily: "var(--font-serif)", fontSize: 28, color: "white", letterSpacing: "-0.5px" }}>CounselBridge</span>
-          </div>
-          <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 13.5 }}>Secure Legal Communication Platform</p>
-        </div>
+    const handleMagicLink = async () => {
+      if (!loginEmail.trim()) { setLoginError("Please enter your email address first."); return; }
+      try {
+        await AuthAPI.magicLink(loginEmail);
+        setLoginError("✓ Magic link sent! Check your email.");
+      } catch (err) {
+        setLoginError(err.message || "Failed to send magic link.");
+      }
+    };
 
-        {/* Toggle */}
-        <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: "var(--radius-md)", padding: 4, display: "flex", marginBottom: 24, border: "1px solid rgba(255,255,255,0.1)" }}>
-          {["attorney", "client"].map(t => (
-            <button key={t} onClick={() => setLoginType(t)} style={{ flex: 1, padding: "9px 0", borderRadius: "var(--radius-sm)", background: loginType === t ? "var(--white)" : "transparent", color: loginType === t ? "var(--navy)" : "rgba(255,255,255,0.6)", fontWeight: 600, fontSize: 13.5, cursor: "pointer", border: "none", transition: "all var(--transition)", fontFamily: "var(--font-sans)" }}>
-              {t === "attorney" ? "⚖️  Attorney / Staff" : "👤  Client"}
-            </button>
-          ))}
-        </div>
+    return (
+      <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #0F2240 0%, #1B3A5C 50%, #0F2240 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, position: "relative", overflow: "hidden" }}>
+        <style>{css}</style>
+        <div style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(circle at 20% 80%, rgba(37,99,235,0.15) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(13,148,136,0.1) 0%, transparent 50%)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "1px", background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)" }} />
 
-        {/* Card */}
-        <div style={{ background: "rgba(255,255,255,0.97)", borderRadius: "var(--radius-xl)", padding: "32px 28px", boxShadow: "var(--shadow-xl)" }}>
-          <h2 style={{ fontFamily: "var(--font-serif)", fontSize: 22, color: "var(--navy)", marginBottom: 6 }}>
-            {loginType === "attorney" ? "Welcome back" : "Your secure portal"}
-          </h2>
-          <p style={{ fontSize: 13.5, color: "var(--gray-500)", marginBottom: 24 }}>
-            {loginType === "attorney" ? "Sign in to your firm workspace" : "Access your case information securely"}
-          </p>
-          <div style={{ marginBottom: 14 }}>
-            <label>Email address</label>
-            <input className="input" type="email" defaultValue={loginType === "attorney" ? "alex.rivera@riveralaw.com" : "sarah.johnson@email.com"} placeholder="you@example.com" />
-          </div>
-          <div style={{ marginBottom: 20 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
-              <label style={{ marginBottom: 0 }}>Password</label>
-              <span style={{ fontSize: 12.5, color: "var(--blue)", cursor: "pointer" }}>Forgot password?</span>
-            </div>
-            <input className="input" type="password" defaultValue="••••••••" />
-          </div>
-          <button className="btn btn-primary" style={{ width: "100%", justifyContent: "center", padding: "11px 0", fontSize: 15, borderRadius: "var(--radius-md)" }} onClick={() => { setView(loginType === "attorney" ? "attorney" : "client"); setActivePage("dashboard"); }}>
-            Sign In Securely <Icon name="arrow_right" size={16} />
-          </button>
-          {loginType === "client" && (
-            <>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "16px 0" }}>
-                <div style={{ flex: 1, height: 1, background: "var(--gray-200)" }} />
-                <span style={{ fontSize: 12, color: "var(--gray-400)" }}>or</span>
-                <div style={{ flex: 1, height: 1, background: "var(--gray-200)" }} />
+        <div className="fade-in" style={{ width: "100%", maxWidth: 420 }}>
+          <div style={{ textAlign: "center", marginBottom: 36 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 10 }}>
+              <div style={{ width: 42, height: 42, background: "var(--blue)", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Icon name="shield" size={22} color="white" />
               </div>
-              <button className="btn btn-secondary" style={{ width: "100%", justifyContent: "center", borderRadius: "var(--radius-md)" }}>
-                <Icon name="mail" size={15} /> Send me a magic link
+              <span style={{ fontFamily: "var(--font-serif)", fontSize: 28, color: "white", letterSpacing: "-0.5px" }}>CounselBridge</span>
+            </div>
+            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 13.5 }}>Secure Legal Communication Platform</p>
+          </div>
+
+          <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: "var(--radius-md)", padding: 4, display: "flex", marginBottom: 24, border: "1px solid rgba(255,255,255,0.1)" }}>
+            {["attorney", "client"].map(t => (
+              <button key={t} onClick={() => { setLoginType(t); setLoginError(""); }} style={{ flex: 1, padding: "9px 0", borderRadius: "var(--radius-sm)", background: loginType === t ? "var(--white)" : "transparent", color: loginType === t ? "var(--navy)" : "rgba(255,255,255,0.6)", fontWeight: 600, fontSize: 13.5, cursor: "pointer", border: "none", transition: "all var(--transition)", fontFamily: "var(--font-sans)" }}>
+                {t === "attorney" ? "⚖️  Attorney / Staff" : "👤  Client"}
               </button>
-            </>
-          )}
+            ))}
+          </div>
+
+          <div style={{ background: "rgba(255,255,255,0.97)", borderRadius: "var(--radius-xl)", padding: "32px 28px", boxShadow: "var(--shadow-xl)" }}>
+            <h2 style={{ fontFamily: "var(--font-serif)", fontSize: 22, color: "var(--navy)", marginBottom: 6 }}>
+              {loginType === "attorney" ? "Welcome back" : "Your secure portal"}
+            </h2>
+            <p style={{ fontSize: 13.5, color: "var(--gray-500)", marginBottom: 24 }}>
+              {loginType === "attorney" ? "Sign in to your firm workspace" : "Access your case information securely"}
+            </p>
+
+            {loginError && (
+              <div style={{ background: loginError.startsWith("✓") ? "var(--green-pale)" : "var(--red-pale)", color: loginError.startsWith("✓") ? "var(--green)" : "var(--red)", border: `1px solid ${loginError.startsWith("✓") ? "#BBF7D0" : "#FECACA"}`, borderRadius: "var(--radius-sm)", padding: "10px 14px", fontSize: 13.5, marginBottom: 16 }}>
+                {loginError}
+              </div>
+            )}
+
+            <div style={{ marginBottom: 14 }}>
+              <label>Email address</label>
+              <input className="input" type="email" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} placeholder="you@example.com" onKeyDown={e => e.key === "Enter" && handleLogin()} />
+            </div>
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
+                <label style={{ marginBottom: 0 }}>Password</label>
+              </div>
+              <input className="input" type="password" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} placeholder="••••••••" onKeyDown={e => e.key === "Enter" && handleLogin()} />
+            </div>
+            <button className="btn btn-primary" disabled={loginLoading} style={{ width: "100%", justifyContent: "center", padding: "11px 0", fontSize: 15, borderRadius: "var(--radius-md)" }} onClick={handleLogin}>
+              {loginLoading ? "Signing in..." : <> Sign In Securely <Icon name="arrow_right" size={16} /></>}
+            </button>
+            {loginType === "client" && (
+              <>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "16px 0" }}>
+                  <div style={{ flex: 1, height: 1, background: "var(--gray-200)" }} />
+                  <span style={{ fontSize: 12, color: "var(--gray-400)" }}>or</span>
+                  <div style={{ flex: 1, height: 1, background: "var(--gray-200)" }} />
+                </div>
+                <button className="btn btn-secondary" style={{ width: "100%", justifyContent: "center", borderRadius: "var(--radius-md)" }} onClick={handleMagicLink}>
+                  <Icon name="mail" size={15} /> Send me a magic link
+                </button>
+              </>
+            )}
+          </div>
+          <p style={{ textAlign: "center", marginTop: 20, fontSize: 12, color: "rgba(255,255,255,0.35)" }}>
+            Protected by 256-bit encryption · SOC 2 compliant
+          </p>
         </div>
-        <p style={{ textAlign: "center", marginTop: 20, fontSize: 12, color: "rgba(255,255,255,0.35)" }}>
-          Protected by 256-bit encryption · SOC 2 compliant
-        </p>
+        <div style={{ position: "fixed", bottom: 20, right: 20, display: "flex", gap: 8 }}>
+          <button className="btn btn-sm" style={{ background: "rgba(255,255,255,0.15)", color: "white", border: "1px solid rgba(255,255,255,0.2)", backdropFilter: "blur(8px)" }} onClick={() => { setView("attorney"); setActivePage("dashboard"); }}>
+            Demo (Attorney) →
+          </button>
+          <button className="btn btn-sm" style={{ background: "rgba(255,255,255,0.15)", color: "white", border: "1px solid rgba(255,255,255,0.2)", backdropFilter: "blur(8px)" }} onClick={() => setView("client")}>
+            Demo (Client) →
+          </button>
+        </div>
       </div>
+    );
+  }
 
-      {/* Demo switcher */}
-      <div style={{ position: "fixed", bottom: 20, right: 20, display: "flex", gap: 8 }}>
-        <button className="btn btn-sm" style={{ background: "rgba(255,255,255,0.15)", color: "white", border: "1px solid rgba(255,255,255,0.2)", backdropFilter: "blur(8px)" }} onClick={() => { setLoginType("attorney"); setView("attorney"); setActivePage("dashboard"); }}>
-          Attorney Demo →
-        </button>
-        <button className="btn btn-sm" style={{ background: "rgba(255,255,255,0.15)", color: "white", border: "1px solid rgba(255,255,255,0.2)", backdropFilter: "blur(8px)" }} onClick={() => { setLoginType("client"); setView("client"); }}>
-          Client Demo →
-        </button>
-      </div>
-    </div>
-  );
-
-  // ─── CLIENT PORTAL ─────────────────────────────────────────────────────────
+    // ─── CLIENT PORTAL ─────────────────────────────────────────────────────────
   if (view === "client") {
-    const matter = MATTERS.find(m => m.id === clientMatterId);
-    const docReqs = DOC_REQUESTS[clientMatterId] || [];
-    const timeline = TIMELINE[clientMatterId] || [];
-    const clientMsgs = (messages[clientMatterId] || []).filter(m => !m.internal);
+    const matter = clientMatter;
+    const docReqs = clientMatter?.docRequests || [];
+    const timeline = clientMatter?.events || [];
+    const clientMsgs = (messages[clientMatter?.id] || []).filter(m => !m.internal);
     const totalReqs = docReqs.length;
-    const doneReqs = docReqs.filter(d => d.done).length;
+    const doneReqs = docReqs.filter(d => d.done || d.status === "RECEIVED").length;
 
     return (
       <div style={{ minHeight: "100vh", background: "var(--gray-50)", fontFamily: "var(--font-sans)" }}>
@@ -1026,7 +1123,7 @@ export default function CounselBridge() {
               <Icon name="shield" size={16} color="white" />
             </div>
             <span style={{ fontFamily: "var(--font-serif)", fontSize: 18, color: "var(--navy)" }}>CounselBridge</span>
-            <span style={{ fontSize: 12, color: "var(--gray-400)", marginLeft: 4 }}>· Rivera & Associates</span>
+            <span style={{ fontSize: 12, color: "var(--gray-400)", marginLeft: 4 }}>· {currentFirm?.name || "Your Firm"}</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ fontSize: 13.5, color: "var(--gray-600)" }}>Sarah Johnson</span>
@@ -1112,7 +1209,7 @@ export default function CounselBridge() {
                     <div style={{ fontSize: 14, fontWeight: 600, color: "var(--gray-800)", marginBottom: 2 }}>Video consultation with Alex Rivera</div>
                     <div style={{ fontSize: 13, color: "var(--gray-500)" }}>Today · 2:00 PM · ~30 minutes</div>
                   </div>
-                  <button className="btn btn-primary btn-sm" onClick={() => { setVideoCallContact({ name: "Alex Rivera", matter: matter.title }); setShowVideoCall(true); }}>
+                  <button className="btn btn-primary btn-sm" onClick={() => { setVideoCallContact({ name: matter?.attorney || "Attorney", matter: matter?.title || "" }); setShowVideoCall(true); }}>
                     <Icon name="video" size={13} />Join
                   </button>
                 </div>
@@ -1137,10 +1234,10 @@ export default function CounselBridge() {
                   <Avatar name="Alex Rivera" size={28} color="blue" />
                   <div>
                     <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--gray-800)" }}>Alex Rivera</div>
-                    <div style={{ fontSize: 12, color: "var(--gray-400)" }}>Rivera & Associates · Your Attorney</div>
+                    <div style={{ fontSize: 12, color: "var(--gray-400)" }}>{currentFirm?.name || "Your Firm"} · Your Attorney</div>
                   </div>
                   <div style={{ marginLeft: "auto" }}>
-                    <button className="btn btn-secondary btn-sm" onClick={() => { setVideoCallContact({ name: "Alex Rivera", matter: matter.title }); setShowVideoCall(true); }}><Icon name="video" size={13} />Video Call</button>
+                    <button className="btn btn-secondary btn-sm" onClick={() => { setVideoCallContact({ name: matter?.attorney || "Attorney", matter: matter?.title || "" }); setShowVideoCall(true); }}><Icon name="video" size={13} />Video Call</button>
                   </div>
                 </div>
                 <div className="scroll-y" style={{ height: 360, padding: "16px", display: "flex", flexDirection: "column", gap: 10 }}>
@@ -1188,7 +1285,7 @@ export default function CounselBridge() {
               </div>
               <div className="card" style={{ padding: 20 }}>
                 <div style={{ fontSize: 14, fontWeight: 600, color: "var(--gray-800)", marginBottom: 14 }}>Shared Documents</div>
-                {(DOCUMENTS[1] || []).filter(d => d.shared).map(doc => (
+                {(clientMatter?.documents || []).filter(d => d.accessLevel === "CLIENT" || d.shared).map(doc => (
                   <div key={doc.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid var(--gray-100)" }}>
                     <div style={{ width: 32, height: 32, background: "var(--blue-pale)", borderRadius: "var(--radius-sm)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <Icon name="file" size={14} color="var(--blue)" />
@@ -1229,7 +1326,7 @@ export default function CounselBridge() {
 
               {/* Invoices */}
               <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--gray-700)", marginBottom: 4 }}>Invoices</div>
-              {INVOICES.filter(i => i.matterId === clientMatterId).map(inv => (
+              {invoices.filter(i => i.matterId === clientMatter?.id).map(inv => (
                 <div key={inv.id} className="card" style={{ padding: "18px 20px" }}>
                   <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: inv.status !== "paid" ? 14 : 0 }}>
                     <div>
@@ -1340,10 +1437,10 @@ export default function CounselBridge() {
   const MatterDetail = ({ matter }) => {
     const matterMsgs = (messages[matter.id] || []);
     const visibleMsgs = showInternal ? matterMsgs : matterMsgs.filter(m => !m.internal);
-    const docs = DOCUMENTS[matter.id] || [];
-    const reqs = DOC_REQUESTS[matter.id] || [];
-    const inv = INVOICES.filter(i => i.matterId === matter.id);
-    const tl = TIMELINE[matter.id] || [];
+    const docs = matter?.documents || [];
+    const reqs = matter?.docRequests || [];
+    const inv = invoices.filter(i => i.matterId === matter.id);
+    const tl = matter?.events || [];
 
     return (
       <div className="fade-in" style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
@@ -1754,7 +1851,7 @@ export default function CounselBridge() {
             </div>
             <span style={{ fontFamily: "var(--font-serif)", fontSize: 20, color: "white", letterSpacing: "-0.3px" }}>CounselBridge</span>
           </div>
-          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 3, paddingLeft: 2 }}>Rivera & Associates</div>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 3, paddingLeft: 2 }}>{currentFirm?.name || "Your Firm"}</div>
         </div>
 
         {/* Nav */}
@@ -1770,7 +1867,7 @@ export default function CounselBridge() {
           <div style={{ flex: 1 }} />
           <div style={{ height: 1, background: "rgba(255,255,255,0.08)", margin: "8px 2px" }} />
           <NavItem icon="settings" label="Settings" page="settings" />
-          <div className="nav-item" onClick={() => setView("login")} style={{ color: "rgba(255,255,255,0.5)" }}>
+          <div className="nav-item" onClick={handleLogout} style={{ color: "rgba(255,255,255,0.5)" }}>
             <Icon name="log-out" size={16} color="rgba(255,255,255,0.5)" />
             <span>Sign Out</span>
           </div>
@@ -1793,10 +1890,10 @@ export default function CounselBridge() {
             </button>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, paddingLeft: 8, borderLeft: "1px solid var(--gray-200)" }}>
-            <Avatar name="Alex Rivera" size={30} color="blue" />
+            <Avatar name={currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "User"} size={30} color="blue" />
             <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--gray-800)", lineHeight: 1.2 }}>Alex Rivera</div>
-              <div style={{ fontSize: 11, color: "var(--gray-400)" }}>Attorney · Pro Plan</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--gray-800)", lineHeight: 1.2 }}>{currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "Attorney"}</div>
+              <div style={{ fontSize: 11, color: "var(--gray-400)" }}>{currentUser?.role || "Attorney"} · {currentFirm?.name || "Your Firm"}</div>
             </div>
           </div>
           <button className="btn btn-sm" style={{ background: "rgba(37,99,235,0.1)", color: "var(--blue)", border: "1px solid var(--blue-pale2)" }} onClick={() => setView("client")}>
@@ -1827,7 +1924,7 @@ export default function CounselBridge() {
                 {[
                   { label: "Active Matters", value: matters.filter(m => m.status === "active").length, icon: "briefcase", color: "blue", sub: "+2 this week" },
                   { label: "Unread Messages", value: matters.reduce((s,m) => s + m.unread, 0), icon: "message", color: "teal", sub: "Across 3 matters" },
-                  { label: "Pending Invoices", value: "$" + INVOICES.filter(i => i.status !== "paid").reduce((s,i) => s+i.amount,0).toLocaleString(), icon: "dollar", color: "amber", sub: "2 overdue" },
+                  { label: "Pending Invoices", value: "$" + invoices.filter(i => i.status !== "paid").reduce((s,i) => s+i.amount,0).toLocaleString(), icon: "dollar", color: "amber", sub: "2 overdue" },
                   { label: "AI Queue", value: aiQueue.length, icon: "cpu", color: "purple", sub: "Needs your approval" },
                 ].map(k => (
                   <div key={k.label} className="card" style={{ padding: "16px 18px", cursor: "pointer" }} onClick={() => { if(k.label === "AI Queue") setActivePage("ai-queue"); }}>
@@ -1857,7 +1954,7 @@ export default function CounselBridge() {
                       </button>
                     </div>
                     <div style={{ fontSize: 14, color: "var(--gray-700)", lineHeight: 1.7, whiteSpace: "pre-line" }}>
-                      {digestExpanded ? DIGEST_TEXT : DIGEST_TEXT.split("\n")[0]}
+                      {digestExpanded ? (digestText || "Loading your daily digest...") : (digestText || "").split("\n")[0] || "Click to load your AI daily digest"}
                       {!digestExpanded && <span style={{ color: "var(--blue)", cursor: "pointer", fontSize: 13 }} onClick={() => setDigestExpanded(true)}> · See full digest</span>}
                     </div>
                   </div>
@@ -2059,7 +2156,7 @@ export default function CounselBridge() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
                 <div>
                   <h1 style={{ fontFamily: "var(--font-serif)", fontSize: 22, color: "var(--navy)", marginBottom: 2 }}>Billing</h1>
-                  <p style={{ fontSize: 13.5, color: "var(--gray-500)" }}>March 2026 · Rivera & Associates</p>
+                  <p style={{ fontSize: 13.5, color: "var(--gray-500)" }}>March 2026 · {currentFirm?.name || "Your Firm"}</p>
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button className="btn btn-secondary btn-sm"><Icon name="download" size={14} />Export</button>
@@ -2505,7 +2602,7 @@ export default function CounselBridge() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
                 <div>
                   <h1 style={{ fontFamily: "var(--font-serif)", fontSize: 22, color: "var(--navy)", marginBottom: 2 }}>Team</h1>
-                  <p style={{ fontSize: 13.5, color: "var(--gray-500)" }}>Rivera & Associates · 3 members · Pro Plan</p>
+                  <p style={{ fontSize: 13.5, color: "var(--gray-500)" }}>{currentFirm?.name || "Your Firm"} · 3 members · Pro Plan</p>
                 </div>
                 <button className="btn btn-primary"><Icon name="plus" size={15} />Invite Member</button>
               </div>
@@ -2654,7 +2751,7 @@ export default function CounselBridge() {
                   <div className="card" style={{ padding: 24 }}>
                     <div style={{ fontSize: 15, fontWeight: 700, color: "var(--gray-900)", marginBottom: 18 }}>Firm Profile</div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
-                      <div><label>Firm Name</label><input className="input" defaultValue="Rivera & Associates" /></div>
+                      <div><label>Firm Name</label><input className="input" defaultValue="{currentFirm?.name || "Your Firm"}" /></div>
                       <div><label>Portal URL</label><input className="input" defaultValue="rivera.counselbridge.io" /></div>
                       <div><label>Practice Area(s)</label><input className="input" defaultValue="Family Law, Litigation, Estate Planning, Corporate" /></div>
                       <div><label>Firm Phone</label><input className="input" defaultValue="(415) 555-0182" /></div>
