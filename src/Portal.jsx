@@ -806,6 +806,97 @@ const VideoCall = ({ contact, onClose, isClient }) => {
   return null;
 };
 
+// ─── NEW MATTER MODAL ─────────────────────────────────────────────────────────
+const NewMatterModal = ({ onClose, onCreated, currentUser }) => {
+  const [form, setForm] = useState({
+    clientFirstName: "", clientLastName: "", clientEmail: "", clientPhone: "",
+    title: "", practiceArea: "Family Law", retainerAmount: "", billingType: "Hourly", notes: ""
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const handleSubmit = async () => {
+    if (!form.clientFirstName || !form.clientEmail || !form.title) {
+      setError("Please fill in client name, email, and matter title.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      const data = await MattersAPI.create({
+        title: form.title,
+        practiceArea: form.practiceArea,
+        description: form.notes,
+        billingType: form.billingType,
+        retainerAmount: form.retainerAmount ? parseFloat(form.retainerAmount) : 0,
+        client: {
+          firstName: form.clientFirstName,
+          lastName: form.clientLastName,
+          email: form.clientEmail,
+          phone: form.clientPhone,
+        }
+      });
+      onCreated(data.matter);
+    } catch (err) {
+      setError(err.message || "Failed to create matter. Please try again.");
+    }
+    setSaving(false);
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(15,34,64,0.6)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }} onClick={onClose}>
+      <div className="card fade-in" style={{ width: 560, maxHeight: "85vh", overflow: "auto", padding: 32 }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+          <h3 style={{ fontSize: 19, fontWeight: 700, color: "var(--navy)", fontFamily: "var(--font-serif)" }}>Open New Matter</h3>
+          <button className="btn btn-ghost btn-sm" onClick={onClose}><Icon name="x" size={16} /></button>
+        </div>
+        <p style={{ fontSize: 13.5, color: "var(--gray-500)", marginBottom: 24 }}>Fill in the details below. A client portal invitation will be sent automatically.</p>
+
+        {error && <div style={{ background: "var(--red-pale)", color: "var(--red)", border: "1px solid #FECACA", borderRadius: "var(--radius-sm)", padding: "10px 14px", fontSize: 13.5, marginBottom: 16 }}>{error}</div>}
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div><label>Client First Name *</label><input className="input" placeholder="Sarah" value={form.clientFirstName} onChange={e => set("clientFirstName", e.target.value)} /></div>
+            <div><label>Client Last Name</label><input className="input" placeholder="Johnson" value={form.clientLastName} onChange={e => set("clientLastName", e.target.value)} /></div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div><label>Client Email *</label><input className="input" type="email" placeholder="client@email.com" value={form.clientEmail} onChange={e => set("clientEmail", e.target.value)} /></div>
+            <div><label>Client Phone</label><input className="input" placeholder="(415) 555-0100" value={form.clientPhone} onChange={e => set("clientPhone", e.target.value)} /></div>
+          </div>
+          <div><label>Matter Title *</label><input className="input" placeholder="e.g. Johnson Divorce Proceeding" value={form.title} onChange={e => set("title", e.target.value)} /></div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div><label>Practice Area</label>
+              <select className="input select" value={form.practiceArea} onChange={e => set("practiceArea", e.target.value)}>
+                <option>Family Law</option><option>Estate Planning</option><option>Litigation</option>
+                <option>Corporate</option><option>Personal Injury</option><option>Real Estate</option><option>Criminal Defense</option>
+              </select>
+            </div>
+            <div><label>Billing Type</label>
+              <select className="input select" value={form.billingType} onChange={e => set("billingType", e.target.value)}>
+                <option>Hourly</option><option>Flat fee</option><option>Contingency</option>
+              </select>
+            </div>
+          </div>
+          <div><label>Retainer Amount</label><input className="input" placeholder="$0.00" value={form.retainerAmount} onChange={e => set("retainerAmount", e.target.value)} /></div>
+          <div><label>Initial Notes (internal)</label><textarea className="input textarea" placeholder="Brief description of the matter and client situation..." value={form.notes} onChange={e => set("notes", e.target.value)} /></div>
+          <div style={{ background: "var(--blue-pale)", border: "1px solid var(--blue-pale2)", borderRadius: "var(--radius-sm)", padding: "10px 14px", fontSize: 13, color: "var(--blue)" }}>
+            <Icon name="mail" size={13} color="var(--blue)" style={{ display: "inline", marginRight: 6 }} />
+            A portal invitation email will be sent to the client automatically upon saving.
+          </div>
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", paddingTop: 4 }}>
+            <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+            <button className="btn btn-primary" disabled={saving} onClick={handleSubmit}>
+              <Icon name="briefcase" size={14} />{saving ? "Creating..." : "Open Matter & Invite Client"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function CounselBridge() {
   const [view, setView] = useState(() => {
@@ -1767,54 +1858,7 @@ export default function CounselBridge() {
       )}
 
       {/* New Matter Modal */}
-      {showNewMatterModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(15,34,64,0.6)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }} onClick={() => setShowNewMatterModal(false)}>
-          <div className="card fade-in" style={{ width: 560, maxHeight: "85vh", overflow: "auto", padding: 32 }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-              <h3 style={{ fontSize: 19, fontWeight: 700, color: "var(--navy)", fontFamily: "var(--font-serif)" }}>Open New Matter</h3>
-              <button className="btn btn-ghost btn-sm" onClick={() => setShowNewMatterModal(false)}><Icon name="x" size={16} /></button>
-            </div>
-            <p style={{ fontSize: 13.5, color: "var(--gray-500)", marginBottom: 24 }}>Fill in the details below. A client portal invitation will be sent automatically.</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div><label>Client First Name</label><input className="input" placeholder="Sarah" /></div>
-                <div><label>Client Last Name</label><input className="input" placeholder="Johnson" /></div>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div><label>Client Email</label><input className="input" type="email" placeholder="client@email.com" /></div>
-                <div><label>Client Phone</label><input className="input" placeholder="(415) 555-0100" /></div>
-              </div>
-              <div><label>Matter Title</label><input className="input" placeholder="e.g. Johnson Divorce Proceeding" /></div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div><label>Practice Area</label>
-                  <select className="input select">
-                    <option>Family Law</option><option>Estate Planning</option><option>Litigation</option>
-                    <option>Corporate</option><option>Personal Injury</option><option>Real Estate</option><option>Criminal Defense</option>
-                  </select>
-                </div>
-                <div><label>Lead Attorney</label>
-                  <select className="input select"><option>Alex Rivera</option><option>Priya Patel (Paralegal)</option></select>
-                </div>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div><label>Retainer Amount</label><input className="input" placeholder="$0.00" /></div>
-                <div><label>Billing Type</label>
-                  <select className="input select"><option>Hourly</option><option>Flat fee</option><option>Contingency</option></select>
-                </div>
-              </div>
-              <div><label>Initial Notes (internal)</label><textarea className="input textarea" placeholder="Brief description of the matter and client situation..." /></div>
-              <div style={{ background: "var(--blue-pale)", border: "1px solid var(--blue-pale2)", borderRadius: "var(--radius-sm)", padding: "10px 14px", fontSize: 13, color: "var(--blue)" }}>
-                <Icon name="mail" size={13} color="var(--blue)" style={{ display: "inline", marginRight: 6 }} />
-                A portal invitation email will be sent to the client automatically upon saving.
-              </div>
-              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", paddingTop: 4 }}>
-                <button className="btn btn-secondary" onClick={() => setShowNewMatterModal(false)}>Cancel</button>
-                <button className="btn btn-primary" onClick={() => { setShowNewMatterModal(false); setActivePage("matters"); }}><Icon name="briefcase" size={14} />Open Matter & Invite Client</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {showNewMatterModal && <NewMatterModal onClose={() => setShowNewMatterModal(false)} onCreated={(matter) => { setMatters(prev => [...prev, normalizeMatter(matter)]); setShowNewMatterModal(false); setActivePage("matters"); }} currentUser={currentUser} />}
 
       {/* Invoice Modal */}
       {showInvoiceModal && (
@@ -2751,7 +2795,7 @@ export default function CounselBridge() {
                   <div className="card" style={{ padding: 24 }}>
                     <div style={{ fontSize: 15, fontWeight: 700, color: "var(--gray-900)", marginBottom: 18 }}>Firm Profile</div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
-                      <div><label>Firm Name</label><input className="input" defaultValue={currentFirm?.name || "Your Firm"} /></div>
+                      <div><label>Firm Name</label><input className="input" defaultValue="{currentFirm?.name || "Your Firm"}" /></div>
                       <div><label>Portal URL</label><input className="input" defaultValue="rivera.counselbridge.io" /></div>
                       <div><label>Practice Area(s)</label><input className="input" defaultValue="Family Law, Litigation, Estate Planning, Corporate" /></div>
                       <div><label>Firm Phone</label><input className="input" defaultValue="(415) 555-0182" /></div>
@@ -2916,3 +2960,5 @@ export default function CounselBridge() {
     </div>
   );
 }
+
+              
