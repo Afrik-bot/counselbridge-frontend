@@ -493,24 +493,22 @@ const VideoCall = ({ contact, onClose, isClient }) => {
     setShowSummary(true);
     setSummaryLoading(true);
     try {
-      const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      const BASE = import.meta?.env?.VITE_API_URL || "https://api.counselbridge.me";
+      const { access } = { access: localStorage.getItem("cb_token") };
+      const resp = await fetch(`${BASE}/api/ai/meeting-summary`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(access ? { Authorization: `Bearer ${access}` } : {}) },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1000,
-          system: "You are an AI legal assistant generating a meeting summary for an attorney. Be concise and professional. Format: 1 short paragraph summary, then a bulleted action items list.",
-          messages: [{
-            role: "user",
-            content: `Generate a brief meeting summary for a video consultation between ${contact?.myName || "the attorney"} and ${contact?.name || "the client"} regarding ${contact?.matter || "their legal matter"}. The call lasted ${Math.floor(duration / 60)} minutes and ${duration % 60} seconds. Include 2-3 plausible action items based on a typical legal consultation.`
-          }]
+          attorneyName: contact?.myName || "the attorney",
+          clientName: contact?.name || "the client",
+          matter: contact?.matter || "their legal matter",
+          durationSeconds: duration
         })
       });
       const data = await resp.json();
-      const text = data.content?.map(c => c.text || "").join("") || "Meeting completed. Please add your notes manually.";
-      setSummaryText(text);
+      setSummaryText(data?.summary || "Meeting completed. Please add your notes manually.");
     } catch {
-      setSummaryText("Meeting completed (" + fmt(duration) + "). AI summary unavailable — please add notes manually.");
+      setSummaryText("Meeting completed (" + fmt(duration) + "). Please add your notes manually.");
     }
     setSummaryLoading(false);
   };
@@ -1090,6 +1088,11 @@ export default function CounselBridge() {
   const [clientMatter, setClientMatter] = useState(null);
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [digestText, setDigestText] = useState("");
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [authMode, setAuthMode] = useState("login");
+  const [regData, setRegData] = useState({ firmName: "", firstName: "", lastName: "", email: "", password: "", confirmPassword: "" });
+  const setReg = (k, v) => setRegData(r => ({ ...r, [k]: v }));
   const msgEndRef = useRef(null);
 
   useEffect(() => {
@@ -1230,9 +1233,6 @@ export default function CounselBridge() {
 
   // ─── LOGIN / SIGNUP SCREEN ───────────────────────────────────────────────────
   if (view === "login") {
-    const [authMode, setAuthMode] = useState("login"); // login | signup
-    const [regData, setRegData] = useState({ firmName: "", firstName: "", lastName: "", email: "", password: "", confirmPassword: "" });
-    const setReg = (k, v) => setRegData(r => ({ ...r, [k]: v }));
 
     const handleLogin = async () => {
       if (!loginEmail.trim() || !loginPassword.trim()) { setLoginError("Please enter your email and password."); return; }
