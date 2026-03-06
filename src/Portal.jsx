@@ -2124,6 +2124,12 @@ export default function CounselBridge() {
           <button className="btn btn-sm" style={{ background: "rgba(37,99,235,0.1)", color: "var(--blue)", border: "1px solid var(--blue-pale2)" }} onClick={() => setView("client")}>
             👤 Client View
           </button>
+          <button className="btn btn-sm btn-primary" style={{ gap: 6 }} onClick={() => {
+            const name = prompt("Enter client name for this call:");
+            if (name) { setVideoCallContact({ name, matter: "Ad-hoc consultation", myName: currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "You" }); setShowVideoCall(true); }
+          }}>
+            <Icon name="video" size={13} color="white" /> Start Call
+          </button>
         </div>
 
         {/* Page content */}
