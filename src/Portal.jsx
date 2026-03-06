@@ -1045,6 +1045,324 @@ const NewMatterModal = ({ onClose, onCreated, currentUser }) => {
   );
 };
 
+// ─── MATTER DETAIL ─────────────────────────────────────────────────────────
+const MatterDetail = ({ matter, messages, showInternal, setShowInternal, invoices, setVideoCallContact, setShowVideoCall, currentUser, setShowInvoiceModal, setSelectedMatter, matterTab, setMatterTab, aiDraft, setAiDraft, newMsg, setNewMsg, generateAIDraft, sendMessage, aiTyping, setShowAIModal, setShowUploadModal }) => {
+  const matterMsgs = (messages[matter.id] || []);
+  const visibleMsgs = showInternal ? matterMsgs : matterMsgs.filter(m => !m.internal);
+  const docs = matter?.documents || [];
+  const reqs = matter?.docRequests || [];
+  const inv = invoices.filter(i => i.matterId === matter.id);
+  const tl = matter?.events || [];
+
+  return (
+    <div className="fade-in" style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+      {/* Matter header */}
+      <div style={{ background: "var(--white)", borderBottom: "1px solid var(--gray-200)", padding: "16px 24px" }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 10 }}>
+          <div>
+            <button className="btn btn-ghost btn-sm" style={{ marginBottom: 6, paddingLeft: 0 }} onClick={() => setSelectedMatter(null)}>
+              <Icon name="arrow_left" size={14} />Back to matters
+            </button>
+            <h1 style={{ fontFamily: "var(--font-serif)", fontSize: 20, color: "var(--navy)", marginBottom: 4 }}>{matter.title}</h1>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 12.5, color: "var(--gray-400)" }}>{matter.ref}</span>
+              <span style={{ color: "var(--gray-300)" }}>·</span>
+              <span style={{ fontSize: 12.5, color: "var(--gray-500)" }}>{matter.practice}</span>
+              <span style={{ color: "var(--gray-300)" }}>·</span>
+              <StatusBadge status={matter.status} />
+              {matter.urgency === "high" && <StatusBadge status="high" />}
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button className="btn btn-secondary btn-sm" onClick={() => { setVideoCallContact({ name: matter.client, matter: matter.title, myName: currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "You" }); setShowVideoCall(true); }}><Icon name="video" size={14} />Schedule Call</button>
+            <button className="btn btn-primary btn-sm"><Icon name="edit" size={14} />Update Status</button>
+          </div>
+        </div>
+        <div className="tab-bar">
+          {["overview", "messages", "documents", "timeline", "billing"].map(t => (
+            <button key={t} className={`tab ${matterTab === t ? "active" : ""}`} onClick={() => setMatterTab(t)}>
+              {t.charAt(0).toUpperCase() + t.slice(1)}
+              {t === "messages" && matterMsgs.filter(m => !m.read).length > 0 && (
+                <span className="badge badge-red" style={{ marginLeft: 5, padding: "1px 5px", fontSize: 10 }}>{matterMsgs.filter(m => !m.read).length}</span>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="scroll-y" style={{ flex: 1, padding: 24 }}>
+        {/* OVERVIEW */}
+        {matterTab === "overview" && (
+          <div className="fade-in" style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 20 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div className="card" style={{ padding: 20 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--gray-500)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Client</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <Avatar name={matter.client} size={44} color="teal" />
+                  <div>
+                    <div style={{ fontSize: 16, fontWeight: 600, color: "var(--gray-900)" }}>{matter.client}</div>
+                    <div style={{ fontSize: 13.5, color: "var(--gray-500)" }}>{matter.clientEmail}</div>
+                  </div>
+                  <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
+                    <button className="btn btn-secondary btn-sm"><Icon name="message" size={13} /></button>
+                    <button className="btn btn-secondary btn-sm"><Icon name="phone" size={13} /></button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="card" style={{ padding: 20 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--gray-500)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Next Steps</div>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  <div style={{ background: "var(--blue-pale)", border: "1.5px solid var(--blue-pale2)", borderRadius: "var(--radius-md)", padding: 14 }}>
+                    <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--blue)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>👤 Client sees</div>
+                    <p style={{ fontSize: 13.5, color: "var(--gray-700)", lineHeight: 1.6 }}>{matter.nextStep}</p>
+                    <button className="btn btn-sm" style={{ background: "var(--blue)", color: "white", marginTop: 10, fontSize: 12 }}>
+                      <Icon name="cpu" size={12} />Generate Update
+                    </button>
+                  </div>
+                  <div style={{ background: "var(--amber-pale)", border: "1.5px solid #FDE68A", borderRadius: "var(--radius-md)", padding: 14 }}>
+                    <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--amber)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>🔒 Internal only</div>
+                    <p style={{ fontSize: 13.5, color: "var(--gray-700)", lineHeight: 1.6 }}>{matter.nextStepInternal}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="card" style={{ padding: 20 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--gray-500)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Document Progress</div>
+                {reqs.length > 0 ? (
+                  <>
+                    <div style={{ marginBottom: 10 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, color: "var(--gray-500)", marginBottom: 5 }}>
+                        <span>{reqs.filter(r => r.done).length} of {reqs.length} received</span>
+                        <span style={{ color: reqs.filter(r => !r.done).length > 0 ? "var(--amber)" : "var(--green)" }}>{reqs.filter(r => !r.done).length > 0 ? `${reqs.filter(r => !r.done).length} outstanding` : "All received ✓"}</span>
+                      </div>
+                      <div className="progress-bar"><div className="progress-fill" style={{ width: `${(reqs.filter(r => r.done).length / reqs.length) * 100}%`, background: reqs.filter(r => !r.done).length > 0 ? "var(--amber)" : "var(--green)" }} /></div>
+                    </div>
+                    {reqs.map(req => (
+                      <div key={req.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0", fontSize: 13.5 }}>
+                        <Icon name={req.done ? "check-circle" : "alert-circle"} size={15} color={req.done ? "var(--green)" : "var(--amber)"} />
+                        <span style={{ color: req.done ? "var(--gray-500)" : "var(--gray-700)", textDecoration: req.done ? "line-through" : "none" }}>{req.label}</span>
+                      </div>
+                    ))}
+                  </>
+                ) : <p style={{ fontSize: 13.5, color: "var(--gray-400)" }}>No document requests for this matter</p>}
+              </div>
+            </div>
+
+            {/* Right column */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div className="card" style={{ padding: 18 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--gray-500)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Key Dates</div>
+                {matter.nextDeadline ? (
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", background: "var(--red-pale)", borderRadius: "var(--radius-sm)", border: "1px solid #FECACA" }}>
+                    <Icon name="clock" size={16} color="var(--red)" />
+                    <span style={{ fontSize: 13.5, color: "#991B1B", fontWeight: 500 }}>{matter.nextDeadline}</span>
+                  </div>
+                ) : <p style={{ fontSize: 13.5, color: "var(--gray-400)" }}>No upcoming deadlines</p>}
+                <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
+                  <button className="btn btn-secondary btn-sm" style={{ flex: 1, justifyContent: "center", fontSize: 12 }}><Icon name="plus" size={12} />Add Deadline</button>
+                </div>
+              </div>
+
+              <div className="card" style={{ padding: 18 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--gray-500)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Billing Summary</div>
+                {[["Retainer", `$${matter.retainer.toLocaleString()}`], ["Billed", `$${inv.reduce((s,i) => s + i.amount, 0).toLocaleString()}`], ["Collected", `$${matter.paid.toLocaleString()}`], ["Outstanding", `$${inv.filter(i => i.status !== "paid").reduce((s,i) => s + i.amount, 0).toLocaleString()}`]].map(([k, v]) => (
+                  <div key={k} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid var(--gray-100)", fontSize: 13.5 }}>
+                    <span style={{ color: "var(--gray-500)" }}>{k}</span>
+                    <span style={{ fontWeight: 600, color: k === "Outstanding" && inv.filter(i => i.status !== "paid").length > 0 ? "var(--red)" : "var(--gray-800)" }}>{v}</span>
+                  </div>
+                ))}
+                <button className="btn btn-primary btn-sm" style={{ width: "100%", justifyContent: "center", marginTop: 12, fontSize: 12 }} onClick={() => setShowInvoiceModal(true)}><Icon name="plus" size={12} />Create Invoice</button>
+              </div>
+
+              <div className="card" style={{ padding: 18 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--gray-500)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>Matter Team</div>
+                {[{ name: matter.attorney, role: "Lead Attorney", color: "blue" }, { name: "Priya Patel", role: "Paralegal", color: "teal" }].map(m => (
+                  <div key={m.name} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0" }}>
+                    <Avatar name={m.name} size={28} color={m.color} />
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 500, color: "var(--gray-800)" }}>{m.name}</div>
+                      <div style={{ fontSize: 11.5, color: "var(--gray-400)" }}>{m.role}</div>
+                    </div>
+                  </div>
+                ))}
+                <button className="btn btn-ghost btn-sm" style={{ width: "100%", justifyContent: "center", marginTop: 6, fontSize: 12 }}><Icon name="plus" size={12} />Add team member</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MESSAGES */}
+        {matterTab === "messages" && (
+          <div className="fade-in" style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 260px)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, alignItems: "center" }}>
+              <div style={{ display: "flex", gap: 6 }}>
+                <button className={`btn btn-sm ${!showInternal ? "btn-primary" : "btn-secondary"}`} onClick={() => setShowInternal(false)}>Client Thread</button>
+                <button className={`btn btn-sm ${showInternal ? "btn-primary" : "btn-secondary"}`} onClick={() => setShowInternal(true)}>🔒 Internal Notes</button>
+              </div>
+              {aiTyping && (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--purple)" }}>
+                  <div className="ai-typing"><span /><span /><span /></div>
+                  AI is drafting...
+                </div>
+              )}
+            </div>
+            <div className="card" style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+              <div className="scroll-y" style={{ flex: 1, padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+                {visibleMsgs.map(msg => (
+                  <div key={msg.id} style={{ display: "flex", flexDirection: "column", alignItems: msg.sender === "attorney" ? "flex-end" : "flex-start", gap: 4 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, paddingLeft: msg.sender === "attorney" ? 0 : 4, paddingRight: msg.sender === "attorney" ? 4 : 0 }}>
+                      {msg.sender !== "attorney" && <Avatar name={msg.name} size={22} color={msg.sender === "staff" ? "amber" : "teal"} />}
+                      <span style={{ fontSize: 12, color: "var(--gray-400)" }}>{msg.name} · {msg.time}</span>
+                      {msg.sender === "attorney" && msg.aiGenerated && <span className="ai-badge"><Icon name="cpu" size={10} color="var(--purple)" />AI</span>}
+                    </div>
+                    <div className={`msg-bubble ${msg.sender === "attorney" ? "sent" : msg.internal ? "internal" : "received"}`}>
+                      {msg.body}
+                    </div>
+                    {msg.sender !== "attorney" && !msg.read && (
+                      <span style={{ fontSize: 11, color: "var(--blue)" }}>● New</span>
+                    )}
+                  </div>
+                ))}
+                {aiDraft && (
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+                    <span className="ai-badge"><Icon name="cpu" size={10} color="var(--purple)" />AI Draft — review before sending</span>
+                    <div className="msg-bubble sent" style={{ background: "linear-gradient(135deg, #7C3AED, #2563EB)", opacity: 0.85, border: "2px dashed rgba(255,255,255,0.3)" }}>
+                      {aiDraft}
+                    </div>
+                  </div>
+                )}
+                <div ref={msgEndRef} />
+              </div>
+              <div style={{ padding: "10px 14px", borderTop: "1px solid var(--gray-200)" }}>
+                {showInternal && (
+                  <div style={{ background: "var(--amber-pale)", border: "1px solid #FDE68A", borderRadius: "var(--radius-sm)", padding: "6px 10px", marginBottom: 8, fontSize: 12, color: "#92400E", display: "flex", gap: 6, alignItems: "center" }}>
+                    <Icon name="lock" size={12} color="#D97706" />
+                    Internal note — not visible to client
+                  </div>
+                )}
+                {aiDraft ? (
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <button className="btn btn-danger btn-sm" onClick={() => setAiDraft("")}><Icon name="x" size={13} />Dismiss</button>
+                    <button className="btn btn-secondary btn-sm" onClick={() => { setNewMsg(aiDraft); setAiDraft(""); }}><Icon name="edit" size={13} />Edit</button>
+                    <button className="btn btn-primary btn-sm" onClick={sendMessage}><Icon name="send" size={13} />Send as-is</button>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <textarea className="input textarea" style={{ flex: 1, minHeight: 60, resize: "none", fontSize: 13.5 }} placeholder={showInternal ? "Add an internal note..." : "Write a message to the client..."} value={newMsg} onChange={e => setNewMsg(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }} />
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      <button className="btn btn-purple btn-sm" onClick={generateAIDraft} title="Generate AI Draft"><Icon name="cpu" size={14} /></button>
+                      <button className="btn btn-secondary btn-sm"><Icon name="paperclip" size={14} /></button>
+                      <button className="btn btn-secondary btn-sm"><Icon name="mic" size={14} /></button>
+                      <button className="btn btn-primary btn-sm" onClick={sendMessage}><Icon name="send" size={14} /></button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* DOCUMENTS */}
+        {matterTab === "documents" && (
+          <div className="fade-in">
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 600, color: "var(--gray-800)" }}>Matter Documents</h3>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button className="btn btn-secondary btn-sm"><Icon name="file" size={13} />Request Documents</button>
+                <button className="btn btn-primary btn-sm"><Icon name="upload" size={13} />Upload</button>
+              </div>
+            </div>
+            <div style={{ display: "grid", gap: 8 }}>
+              {docs.map(doc => (
+                <div key={doc.id} className="card card-hover" style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ width: 38, height: 38, background: "var(--blue-pale)", borderRadius: "var(--radius-sm)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <Icon name="file" size={18} color="var(--blue)" />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 500, color: "var(--gray-800)", marginBottom: 3 }}>{doc.name}</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span className="ai-badge"><Icon name="tag" size={10} color="var(--purple)" />{doc.aiLabel}</span>
+                      <span style={{ fontSize: 11.5, color: "var(--gray-400)" }}>{Math.round(doc.confidence * 100)}% confident</span>
+                      <span style={{ fontSize: 11.5, color: "var(--gray-300)" }}>·</span>
+                      <span style={{ fontSize: 11.5, color: "var(--gray-400)" }}>by {doc.by}</span>
+                      <span style={{ fontSize: 11.5, color: "var(--gray-300)" }}>·</span>
+                      <span style={{ fontSize: 11.5, color: "var(--gray-400)" }}>{doc.size}</span>
+                      <span className={`badge ${doc.shared ? "badge-blue" : "badge-gray"}`} style={{ fontSize: 10 }}>{doc.shared ? "Client visible" : "Internal"}</span>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button className="btn btn-ghost btn-sm"><Icon name="eye" size={14} /></button>
+                    <button className="btn btn-ghost btn-sm"><Icon name="download" size={14} /></button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* TIMELINE */}
+        {matterTab === "timeline" && (
+          <div className="fade-in" style={{ maxWidth: 640 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+              {tl.map((ev, i) => (
+                <div key={ev.id} className="timeline-item" style={{ paddingBottom: i < tl.length - 1 ? 22 : 0 }}>
+                  <div className="timeline-dot" style={{ background: ev.color === "blue" ? "var(--blue-pale2)" : ev.color === "green" ? "var(--green-pale)" : ev.color === "purple" ? "var(--purple-pale)" : ev.color === "teal" ? "var(--teal-pale)" : "var(--gray-100)" }}>
+                    <Icon name={ev.icon} size={14} color={ev.color === "blue" ? "var(--blue)" : ev.color === "green" ? "var(--green)" : ev.color === "purple" ? "var(--purple)" : ev.color === "teal" ? "var(--teal)" : "var(--gray-500)"} />
+                  </div>
+                  <div style={{ paddingTop: 7, flex: 1 }}>
+                    <div style={{ fontSize: 14, color: "var(--gray-800)", lineHeight: 1.55, marginBottom: 2 }}>{ev.text}</div>
+                    <div style={{ fontSize: 12, color: "var(--gray-400)" }}>{ev.date}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* BILLING */}
+        {matterTab === "billing" && (
+          <div className="fade-in">
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 600, color: "var(--gray-800)" }}>Invoices & Payments</h3>
+              <button className="btn btn-primary btn-sm" onClick={() => setShowInvoiceModal(true)}><Icon name="plus" size={13} />New Invoice</button>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {inv.map(invoice => (
+                <div key={invoice.id} className="card" style={{ padding: "14px 18px", display: "flex", alignItems: "center", gap: 14 }}>
+                  <div style={{ width: 40, height: 40, background: invoice.status === "paid" ? "var(--green-pale)" : invoice.status === "overdue" ? "var(--red-pale)" : "var(--blue-pale)", borderRadius: "var(--radius-sm)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <Icon name="dollar" size={18} color={invoice.status === "paid" ? "var(--green)" : invoice.status === "overdue" ? "var(--red)" : "var(--blue)"} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 14, fontWeight: 500, color: "var(--gray-800)", marginBottom: 2 }}>{invoice.desc}</div>
+                    <div style={{ fontSize: 12.5, color: "var(--gray-400)" }}>{invoice.number} · Created {invoice.date} · Due {invoice.due}</div>
+                  </div>
+                  <div style={{ textAlign: "right", marginRight: 12 }}>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: "var(--gray-900)" }}>${invoice.amount.toLocaleString()}</div>
+                  </div>
+                  <StatusBadge status={invoice.status} />
+                  {invoice.status !== "paid" && <button className="btn btn-secondary btn-sm"><Icon name="send" size={13} />Remind</button>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ─── NAV ITEM ─────────────────────────────────────────────────────────────────
+const NavItem = ({ icon, label, page, badge, activePage, setActivePage, setSelectedMatter }) => (
+  <div className={`nav-item ${activePage === page ? "active" : ""}`} onClick={() => { setActivePage(page); setSelectedMatter(null); }}>
+    <Icon name={icon} size={16} color={activePage === page ? "white" : "rgba(255,255,255,0.6)"} />
+    <span>{label}</span>
+    {badge > 0 && <span className="badge-count">{badge}</span>}
+  </div>
+);
+
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function CounselBridge() {
   const [view, setView] = useState(() => {
@@ -1718,323 +2036,6 @@ export default function CounselBridge() {
   }
 
   // ─── ATTORNEY WORKSPACE ────────────────────────────────────────────────────
-  const NavItem = ({ icon, label, page, badge }) => (
-    <div className={`nav-item ${activePage === page ? "active" : ""}`} onClick={() => { setActivePage(page); setSelectedMatter(null); }}>
-      <Icon name={icon} size={16} color={activePage === page ? "white" : "rgba(255,255,255,0.6)"} />
-      <span>{label}</span>
-      {badge > 0 && <span className="badge-count">{badge}</span>}
-    </div>
-  );
-
-  // ─── MATTER DETAIL ─────────────────────────────────────────────────────────
-  const MatterDetail = ({ matter }) => {
-    const matterMsgs = (messages[matter.id] || []);
-    const visibleMsgs = showInternal ? matterMsgs : matterMsgs.filter(m => !m.internal);
-    const docs = matter?.documents || [];
-    const reqs = matter?.docRequests || [];
-    const inv = invoices.filter(i => i.matterId === matter.id);
-    const tl = matter?.events || [];
-
-    return (
-      <div className="fade-in" style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-        {/* Matter header */}
-        <div style={{ background: "var(--white)", borderBottom: "1px solid var(--gray-200)", padding: "16px 24px" }}>
-          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 10 }}>
-            <div>
-              <button className="btn btn-ghost btn-sm" style={{ marginBottom: 6, paddingLeft: 0 }} onClick={() => setSelectedMatter(null)}>
-                <Icon name="arrow_left" size={14} />Back to matters
-              </button>
-              <h1 style={{ fontFamily: "var(--font-serif)", fontSize: 20, color: "var(--navy)", marginBottom: 4 }}>{matter.title}</h1>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: 12.5, color: "var(--gray-400)" }}>{matter.ref}</span>
-                <span style={{ color: "var(--gray-300)" }}>·</span>
-                <span style={{ fontSize: 12.5, color: "var(--gray-500)" }}>{matter.practice}</span>
-                <span style={{ color: "var(--gray-300)" }}>·</span>
-                <StatusBadge status={matter.status} />
-                {matter.urgency === "high" && <StatusBadge status="high" />}
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button className="btn btn-secondary btn-sm" onClick={() => { setVideoCallContact({ name: matter.client, matter: matter.title, myName: currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "You" }); setShowVideoCall(true); }}><Icon name="video" size={14} />Schedule Call</button>
-              <button className="btn btn-primary btn-sm"><Icon name="edit" size={14} />Update Status</button>
-            </div>
-          </div>
-          <div className="tab-bar">
-            {["overview", "messages", "documents", "timeline", "billing"].map(t => (
-              <button key={t} className={`tab ${matterTab === t ? "active" : ""}`} onClick={() => setMatterTab(t)}>
-                {t.charAt(0).toUpperCase() + t.slice(1)}
-                {t === "messages" && matterMsgs.filter(m => !m.read).length > 0 && (
-                  <span className="badge badge-red" style={{ marginLeft: 5, padding: "1px 5px", fontSize: 10 }}>{matterMsgs.filter(m => !m.read).length}</span>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="scroll-y" style={{ flex: 1, padding: 24 }}>
-          {/* OVERVIEW */}
-          {matterTab === "overview" && (
-            <div className="fade-in" style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 20 }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                <div className="card" style={{ padding: 20 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--gray-500)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Client</div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <Avatar name={matter.client} size={44} color="teal" />
-                    <div>
-                      <div style={{ fontSize: 16, fontWeight: 600, color: "var(--gray-900)" }}>{matter.client}</div>
-                      <div style={{ fontSize: 13.5, color: "var(--gray-500)" }}>{matter.clientEmail}</div>
-                    </div>
-                    <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
-                      <button className="btn btn-secondary btn-sm"><Icon name="message" size={13} /></button>
-                      <button className="btn btn-secondary btn-sm"><Icon name="phone" size={13} /></button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="card" style={{ padding: 20 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--gray-500)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Next Steps</div>
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                    <div style={{ background: "var(--blue-pale)", border: "1.5px solid var(--blue-pale2)", borderRadius: "var(--radius-md)", padding: 14 }}>
-                      <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--blue)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>👤 Client sees</div>
-                      <p style={{ fontSize: 13.5, color: "var(--gray-700)", lineHeight: 1.6 }}>{matter.nextStep}</p>
-                      <button className="btn btn-sm" style={{ background: "var(--blue)", color: "white", marginTop: 10, fontSize: 12 }}>
-                        <Icon name="cpu" size={12} />Generate Update
-                      </button>
-                    </div>
-                    <div style={{ background: "var(--amber-pale)", border: "1.5px solid #FDE68A", borderRadius: "var(--radius-md)", padding: 14 }}>
-                      <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--amber)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>🔒 Internal only</div>
-                      <p style={{ fontSize: 13.5, color: "var(--gray-700)", lineHeight: 1.6 }}>{matter.nextStepInternal}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="card" style={{ padding: 20 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--gray-500)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Document Progress</div>
-                  {reqs.length > 0 ? (
-                    <>
-                      <div style={{ marginBottom: 10 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, color: "var(--gray-500)", marginBottom: 5 }}>
-                          <span>{reqs.filter(r => r.done).length} of {reqs.length} received</span>
-                          <span style={{ color: reqs.filter(r => !r.done).length > 0 ? "var(--amber)" : "var(--green)" }}>{reqs.filter(r => !r.done).length > 0 ? `${reqs.filter(r => !r.done).length} outstanding` : "All received ✓"}</span>
-                        </div>
-                        <div className="progress-bar"><div className="progress-fill" style={{ width: `${(reqs.filter(r => r.done).length / reqs.length) * 100}%`, background: reqs.filter(r => !r.done).length > 0 ? "var(--amber)" : "var(--green)" }} /></div>
-                      </div>
-                      {reqs.map(req => (
-                        <div key={req.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0", fontSize: 13.5 }}>
-                          <Icon name={req.done ? "check-circle" : "alert-circle"} size={15} color={req.done ? "var(--green)" : "var(--amber)"} />
-                          <span style={{ color: req.done ? "var(--gray-500)" : "var(--gray-700)", textDecoration: req.done ? "line-through" : "none" }}>{req.label}</span>
-                        </div>
-                      ))}
-                    </>
-                  ) : <p style={{ fontSize: 13.5, color: "var(--gray-400)" }}>No document requests for this matter</p>}
-                </div>
-              </div>
-
-              {/* Right column */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                <div className="card" style={{ padding: 18 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--gray-500)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Key Dates</div>
-                  {matter.nextDeadline ? (
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", background: "var(--red-pale)", borderRadius: "var(--radius-sm)", border: "1px solid #FECACA" }}>
-                      <Icon name="clock" size={16} color="var(--red)" />
-                      <span style={{ fontSize: 13.5, color: "#991B1B", fontWeight: 500 }}>{matter.nextDeadline}</span>
-                    </div>
-                  ) : <p style={{ fontSize: 13.5, color: "var(--gray-400)" }}>No upcoming deadlines</p>}
-                  <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
-                    <button className="btn btn-secondary btn-sm" style={{ flex: 1, justifyContent: "center", fontSize: 12 }}><Icon name="plus" size={12} />Add Deadline</button>
-                  </div>
-                </div>
-
-                <div className="card" style={{ padding: 18 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--gray-500)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Billing Summary</div>
-                  {[["Retainer", `$${matter.retainer.toLocaleString()}`], ["Billed", `$${inv.reduce((s,i) => s + i.amount, 0).toLocaleString()}`], ["Collected", `$${matter.paid.toLocaleString()}`], ["Outstanding", `$${inv.filter(i => i.status !== "paid").reduce((s,i) => s + i.amount, 0).toLocaleString()}`]].map(([k, v]) => (
-                    <div key={k} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid var(--gray-100)", fontSize: 13.5 }}>
-                      <span style={{ color: "var(--gray-500)" }}>{k}</span>
-                      <span style={{ fontWeight: 600, color: k === "Outstanding" && inv.filter(i => i.status !== "paid").length > 0 ? "var(--red)" : "var(--gray-800)" }}>{v}</span>
-                    </div>
-                  ))}
-                  <button className="btn btn-primary btn-sm" style={{ width: "100%", justifyContent: "center", marginTop: 12, fontSize: 12 }} onClick={() => setShowInvoiceModal(true)}><Icon name="plus" size={12} />Create Invoice</button>
-                </div>
-
-                <div className="card" style={{ padding: 18 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--gray-500)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>Matter Team</div>
-                  {[{ name: matter.attorney, role: "Lead Attorney", color: "blue" }, { name: "Priya Patel", role: "Paralegal", color: "teal" }].map(m => (
-                    <div key={m.name} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0" }}>
-                      <Avatar name={m.name} size={28} color={m.color} />
-                      <div>
-                        <div style={{ fontSize: 13, fontWeight: 500, color: "var(--gray-800)" }}>{m.name}</div>
-                        <div style={{ fontSize: 11.5, color: "var(--gray-400)" }}>{m.role}</div>
-                      </div>
-                    </div>
-                  ))}
-                  <button className="btn btn-ghost btn-sm" style={{ width: "100%", justifyContent: "center", marginTop: 6, fontSize: 12 }}><Icon name="plus" size={12} />Add team member</button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* MESSAGES */}
-          {matterTab === "messages" && (
-            <div className="fade-in" style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 260px)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, alignItems: "center" }}>
-                <div style={{ display: "flex", gap: 6 }}>
-                  <button className={`btn btn-sm ${!showInternal ? "btn-primary" : "btn-secondary"}`} onClick={() => setShowInternal(false)}>Client Thread</button>
-                  <button className={`btn btn-sm ${showInternal ? "btn-primary" : "btn-secondary"}`} onClick={() => setShowInternal(true)}>🔒 Internal Notes</button>
-                </div>
-                {aiTyping && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--purple)" }}>
-                    <div className="ai-typing"><span /><span /><span /></div>
-                    AI is drafting...
-                  </div>
-                )}
-              </div>
-              <div className="card" style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-                <div className="scroll-y" style={{ flex: 1, padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
-                  {visibleMsgs.map(msg => (
-                    <div key={msg.id} style={{ display: "flex", flexDirection: "column", alignItems: msg.sender === "attorney" ? "flex-end" : "flex-start", gap: 4 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, paddingLeft: msg.sender === "attorney" ? 0 : 4, paddingRight: msg.sender === "attorney" ? 4 : 0 }}>
-                        {msg.sender !== "attorney" && <Avatar name={msg.name} size={22} color={msg.sender === "staff" ? "amber" : "teal"} />}
-                        <span style={{ fontSize: 12, color: "var(--gray-400)" }}>{msg.name} · {msg.time}</span>
-                        {msg.sender === "attorney" && msg.aiGenerated && <span className="ai-badge"><Icon name="cpu" size={10} color="var(--purple)" />AI</span>}
-                      </div>
-                      <div className={`msg-bubble ${msg.sender === "attorney" ? "sent" : msg.internal ? "internal" : "received"}`}>
-                        {msg.body}
-                      </div>
-                      {msg.sender !== "attorney" && !msg.read && (
-                        <span style={{ fontSize: 11, color: "var(--blue)" }}>● New</span>
-                      )}
-                    </div>
-                  ))}
-                  {aiDraft && (
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
-                      <span className="ai-badge"><Icon name="cpu" size={10} color="var(--purple)" />AI Draft — review before sending</span>
-                      <div className="msg-bubble sent" style={{ background: "linear-gradient(135deg, #7C3AED, #2563EB)", opacity: 0.85, border: "2px dashed rgba(255,255,255,0.3)" }}>
-                        {aiDraft}
-                      </div>
-                    </div>
-                  )}
-                  <div ref={msgEndRef} />
-                </div>
-                <div style={{ padding: "10px 14px", borderTop: "1px solid var(--gray-200)" }}>
-                  {showInternal && (
-                    <div style={{ background: "var(--amber-pale)", border: "1px solid #FDE68A", borderRadius: "var(--radius-sm)", padding: "6px 10px", marginBottom: 8, fontSize: 12, color: "#92400E", display: "flex", gap: 6, alignItems: "center" }}>
-                      <Icon name="lock" size={12} color="#D97706" />
-                      Internal note — not visible to client
-                    </div>
-                  )}
-                  {aiDraft ? (
-                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                      <button className="btn btn-danger btn-sm" onClick={() => setAiDraft("")}><Icon name="x" size={13} />Dismiss</button>
-                      <button className="btn btn-secondary btn-sm" onClick={() => { setNewMsg(aiDraft); setAiDraft(""); }}><Icon name="edit" size={13} />Edit</button>
-                      <button className="btn btn-primary btn-sm" onClick={sendMessage}><Icon name="send" size={13} />Send as-is</button>
-                    </div>
-                  ) : (
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <textarea className="input textarea" style={{ flex: 1, minHeight: 60, resize: "none", fontSize: 13.5 }} placeholder={showInternal ? "Add an internal note..." : "Write a message to the client..."} value={newMsg} onChange={e => setNewMsg(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }} />
-                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                        <button className="btn btn-purple btn-sm" onClick={generateAIDraft} title="Generate AI Draft"><Icon name="cpu" size={14} /></button>
-                        <button className="btn btn-secondary btn-sm"><Icon name="paperclip" size={14} /></button>
-                        <button className="btn btn-secondary btn-sm"><Icon name="mic" size={14} /></button>
-                        <button className="btn btn-primary btn-sm" onClick={sendMessage}><Icon name="send" size={14} /></button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* DOCUMENTS */}
-          {matterTab === "documents" && (
-            <div className="fade-in">
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
-                <h3 style={{ fontSize: 15, fontWeight: 600, color: "var(--gray-800)" }}>Matter Documents</h3>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button className="btn btn-secondary btn-sm"><Icon name="file" size={13} />Request Documents</button>
-                  <button className="btn btn-primary btn-sm"><Icon name="upload" size={13} />Upload</button>
-                </div>
-              </div>
-              <div style={{ display: "grid", gap: 8 }}>
-                {docs.map(doc => (
-                  <div key={doc.id} className="card card-hover" style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-                    <div style={{ width: 38, height: 38, background: "var(--blue-pale)", borderRadius: "var(--radius-sm)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      <Icon name="file" size={18} color="var(--blue)" />
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13.5, fontWeight: 500, color: "var(--gray-800)", marginBottom: 3 }}>{doc.name}</div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <span className="ai-badge"><Icon name="tag" size={10} color="var(--purple)" />{doc.aiLabel}</span>
-                        <span style={{ fontSize: 11.5, color: "var(--gray-400)" }}>{Math.round(doc.confidence * 100)}% confident</span>
-                        <span style={{ fontSize: 11.5, color: "var(--gray-300)" }}>·</span>
-                        <span style={{ fontSize: 11.5, color: "var(--gray-400)" }}>by {doc.by}</span>
-                        <span style={{ fontSize: 11.5, color: "var(--gray-300)" }}>·</span>
-                        <span style={{ fontSize: 11.5, color: "var(--gray-400)" }}>{doc.size}</span>
-                        <span className={`badge ${doc.shared ? "badge-blue" : "badge-gray"}`} style={{ fontSize: 10 }}>{doc.shared ? "Client visible" : "Internal"}</span>
-                      </div>
-                    </div>
-                    <div style={{ display: "flex", gap: 6 }}>
-                      <button className="btn btn-ghost btn-sm"><Icon name="eye" size={14} /></button>
-                      <button className="btn btn-ghost btn-sm"><Icon name="download" size={14} /></button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* TIMELINE */}
-          {matterTab === "timeline" && (
-            <div className="fade-in" style={{ maxWidth: 640 }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-                {tl.map((ev, i) => (
-                  <div key={ev.id} className="timeline-item" style={{ paddingBottom: i < tl.length - 1 ? 22 : 0 }}>
-                    <div className="timeline-dot" style={{ background: ev.color === "blue" ? "var(--blue-pale2)" : ev.color === "green" ? "var(--green-pale)" : ev.color === "purple" ? "var(--purple-pale)" : ev.color === "teal" ? "var(--teal-pale)" : "var(--gray-100)" }}>
-                      <Icon name={ev.icon} size={14} color={ev.color === "blue" ? "var(--blue)" : ev.color === "green" ? "var(--green)" : ev.color === "purple" ? "var(--purple)" : ev.color === "teal" ? "var(--teal)" : "var(--gray-500)"} />
-                    </div>
-                    <div style={{ paddingTop: 7, flex: 1 }}>
-                      <div style={{ fontSize: 14, color: "var(--gray-800)", lineHeight: 1.55, marginBottom: 2 }}>{ev.text}</div>
-                      <div style={{ fontSize: 12, color: "var(--gray-400)" }}>{ev.date}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* BILLING */}
-          {matterTab === "billing" && (
-            <div className="fade-in">
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
-                <h3 style={{ fontSize: 15, fontWeight: 600, color: "var(--gray-800)" }}>Invoices & Payments</h3>
-                <button className="btn btn-primary btn-sm" onClick={() => setShowInvoiceModal(true)}><Icon name="plus" size={13} />New Invoice</button>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {inv.map(invoice => (
-                  <div key={invoice.id} className="card" style={{ padding: "14px 18px", display: "flex", alignItems: "center", gap: 14 }}>
-                    <div style={{ width: 40, height: 40, background: invoice.status === "paid" ? "var(--green-pale)" : invoice.status === "overdue" ? "var(--red-pale)" : "var(--blue-pale)", borderRadius: "var(--radius-sm)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <Icon name="dollar" size={18} color={invoice.status === "paid" ? "var(--green)" : invoice.status === "overdue" ? "var(--red)" : "var(--blue)"} />
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 14, fontWeight: 500, color: "var(--gray-800)", marginBottom: 2 }}>{invoice.desc}</div>
-                      <div style={{ fontSize: 12.5, color: "var(--gray-400)" }}>{invoice.number} · Created {invoice.date} · Due {invoice.due}</div>
-                    </div>
-                    <div style={{ textAlign: "right", marginRight: 12 }}>
-                      <div style={{ fontSize: 16, fontWeight: 700, color: "var(--gray-900)" }}>${invoice.amount.toLocaleString()}</div>
-                    </div>
-                    <StatusBadge status={invoice.status} />
-                    {invoice.status !== "paid" && <button className="btn btn-secondary btn-sm"><Icon name="send" size={13} />Remind</button>}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
   // ─── MAIN LAYOUT ───────────────────────────────────────────────────────────
   return (
     <div style={{ display: "flex", height: "100vh", overflow: "hidden", fontFamily: "var(--font-sans)" }}>
@@ -2081,17 +2082,17 @@ export default function CounselBridge() {
 
         {/* Nav */}
         <div style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1 }}>
-          <NavItem icon="home" label="Dashboard" page="dashboard" />
-          <NavItem icon="briefcase" label="Matters" page="matters" badge={matters.filter(m => m.unread > 0).length} />
-          <NavItem icon="inbox" label="Inbox" page="inbox" badge={5} />
-          <NavItem icon="calendar" label="Calendar" page="calendar" />
-          <NavItem icon="cpu" label="AI Queue" page="ai-queue" badge={aiQueue.length} />
-          <NavItem icon="file" label="Documents" page="documents" />
-          <NavItem icon="dollar" label="Billing" page="billing" />
-          <NavItem icon="users" label="Team" page="team" />
+          <NavItem icon="home" label="Dashboard" page="dashboard" activePage={activePage} setActivePage={setActivePage} setSelectedMatter={setSelectedMatter} />
+          <NavItem icon="briefcase" label="Matters" page="matters" badge={matters.filter(m => m.unread > 0).length} activePage={activePage} setActivePage={setActivePage} setSelectedMatter={setSelectedMatter} />
+          <NavItem icon="inbox" label="Inbox" page="inbox" badge={5} activePage={activePage} setActivePage={setActivePage} setSelectedMatter={setSelectedMatter} />
+          <NavItem icon="calendar" label="Calendar" page="calendar" activePage={activePage} setActivePage={setActivePage} setSelectedMatter={setSelectedMatter} />
+          <NavItem icon="cpu" label="AI Queue" page="ai-queue" badge={aiQueue.length} activePage={activePage} setActivePage={setActivePage} setSelectedMatter={setSelectedMatter} />
+          <NavItem icon="file" label="Documents" page="documents" activePage={activePage} setActivePage={setActivePage} setSelectedMatter={setSelectedMatter} />
+          <NavItem icon="dollar" label="Billing" page="billing" activePage={activePage} setActivePage={setActivePage} setSelectedMatter={setSelectedMatter} />
+          <NavItem icon="users" label="Team" page="team" activePage={activePage} setActivePage={setActivePage} setSelectedMatter={setSelectedMatter} />
           <div style={{ flex: 1 }} />
           <div style={{ height: 1, background: "rgba(255,255,255,0.08)", margin: "8px 2px" }} />
-          <NavItem icon="settings" label="Settings" page="settings" />
+          <NavItem icon="settings" label="Settings" page="settings" activePage={activePage} setActivePage={setActivePage} setSelectedMatter={setSelectedMatter} />
           <div className="nav-item" onClick={handleLogout} style={{ color: "rgba(255,255,255,0.5)" }}>
             <Icon name="log-out" size={16} color="rgba(255,255,255,0.5)" />
             <span>Sign Out</span>
@@ -2136,7 +2137,7 @@ export default function CounselBridge() {
         <div className="scroll-y" style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
           {/* MATTER DETAIL */}
           {selectedMatter && activePage === "matters" && (
-            <MatterDetail matter={selectedMatter} />
+            <MatterDetail matter={selectedMatter} messages={messages} showInternal={showInternal} setShowInternal={setShowInternal} invoices={invoices} setVideoCallContact={setVideoCallContact} setShowVideoCall={setShowVideoCall} currentUser={currentUser} setShowInvoiceModal={setShowInvoiceModal} setSelectedMatter={setSelectedMatter} matterTab={matterTab} setMatterTab={setMatterTab} aiDraft={aiDraft} setAiDraft={setAiDraft} newMsg={newMsg} setNewMsg={setNewMsg} generateAIDraft={generateAIDraft} sendMessage={sendMessage} aiTyping={aiTyping} setShowAIModal={setShowAIModal} setShowUploadModal={setShowUploadModal} />
           )}
 
           {/* DASHBOARD */}
