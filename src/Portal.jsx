@@ -502,7 +502,7 @@ const VideoCall = ({ contact, onClose, isClient }) => {
           system: "You are an AI legal assistant generating a meeting summary for an attorney. Be concise and professional. Format: 1 short paragraph summary, then a bulleted action items list.",
           messages: [{
             role: "user",
-            content: `Generate a brief meeting summary for a video consultation between attorney Alex Rivera and client ${contact?.name || "the client"} regarding ${contact?.matter || "their legal matter"}. The call lasted ${Math.floor(duration / 60)} minutes and ${duration % 60} seconds. Include 2-3 plausible action items based on a typical legal consultation.`
+            content: `Generate a brief meeting summary for a video consultation between ${contact?.myName || "the attorney"} and ${contact?.name || "the client"} regarding ${contact?.matter || "their legal matter"}. The call lasted ${Math.floor(duration / 60)} minutes and ${duration % 60} seconds. Include 2-3 plausible action items based on a typical legal consultation.`
           }]
         })
       });
@@ -590,7 +590,7 @@ const VideoCall = ({ contact, onClose, isClient }) => {
           {isClient ? "Join Your Consultation" : `Call with ${contact?.name || "Client"}`}
         </div>
         <div style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", marginBottom: 28 }}>
-          {isClient ? `with Alex Rivera · {currentFirm?.name || "Your Firm"}` : contact?.matter || "Video Consultation"}
+          {isClient ? `with ${contact?.name || "Your Attorney"}` : contact?.matter || "Video Consultation"}
         </div>
         {permError && (
           <div style={{ background: "rgba(220,38,38,0.15)", border: "1px solid rgba(220,38,38,0.4)", borderRadius: 10, padding: "12px 16px", marginBottom: 20, fontSize: 13.5, color: "#FCA5A5", textAlign: "left" }}>
@@ -695,11 +695,11 @@ const VideoCall = ({ contact, onClose, isClient }) => {
             <video ref={localVideoRef} autoPlay playsInline muted style={{ width: "100%", height: "100%", objectFit: "cover", transform: "scaleX(-1)" }} />
           ) : (
             <div style={{ width: "100%", height: "100%", background: "#1a2a40", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Avatar name={isClient ? "Sarah Johnson" : "Alex Rivera"} size={44} color="blue" />
+              <Avatar name={contact?.myName || "You"} size={44} color="blue" />
             </div>
           )}
           <div style={{ position: "absolute", bottom: 6, left: 8, fontSize: 11, color: "white", background: "rgba(0,0,0,0.5)", padding: "2px 6px", borderRadius: 4 }}>
-            {isClient ? "You (Sarah)" : "You (Alex)"}
+            {`You (${contact?.myName || "You"})`}
           </div>
           {!micOn && (
             <div style={{ position: "absolute", top: 6, right: 6, background: "rgba(220,38,38,0.8)", borderRadius: "50%", width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -1502,7 +1502,7 @@ export default function CounselBridge() {
                     <div style={{ fontSize: 14, fontWeight: 600, color: "var(--gray-800)", marginBottom: 2 }}>Video consultation with Alex Rivera</div>
                     <div style={{ fontSize: 13, color: "var(--gray-500)" }}>Today · 2:00 PM · ~30 minutes</div>
                   </div>
-                  <button className="btn btn-primary btn-sm" onClick={() => { setVideoCallContact({ name: matter?.attorney || "Attorney", matter: matter?.title || "" }); setShowVideoCall(true); }}>
+                  <button className="btn btn-primary btn-sm" onClick={() => { setVideoCallContact({ name: matter?.attorney || "Attorney", matter: matter?.title || "", myName: currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "You" }); setShowVideoCall(true); }}>
                     <Icon name="video" size={13} />Join
                   </button>
                 </div>
@@ -1530,7 +1530,7 @@ export default function CounselBridge() {
                     <div style={{ fontSize: 12, color: "var(--gray-400)" }}>{currentFirm?.name || "Your Firm"} · Your Attorney</div>
                   </div>
                   <div style={{ marginLeft: "auto" }}>
-                    <button className="btn btn-secondary btn-sm" onClick={() => { setVideoCallContact({ name: matter?.attorney || "Attorney", matter: matter?.title || "" }); setShowVideoCall(true); }}><Icon name="video" size={13} />Video Call</button>
+                    <button className="btn btn-secondary btn-sm" onClick={() => { setVideoCallContact({ name: matter?.attorney || "Attorney", matter: matter?.title || "", myName: currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "You" }); setShowVideoCall(true); }}><Icon name="video" size={13} />Video Call</button>
                   </div>
                 </div>
                 <div className="scroll-y" style={{ height: 360, padding: "16px", display: "flex", flexDirection: "column", gap: 10 }}>
@@ -1755,7 +1755,7 @@ export default function CounselBridge() {
               </div>
             </div>
             <div style={{ display: "flex", gap: 8 }}>
-              <button className="btn btn-secondary btn-sm" onClick={() => { setVideoCallContact({ name: matter.client, matter: matter.title }); setShowVideoCall(true); }}><Icon name="video" size={14} />Schedule Call</button>
+              <button className="btn btn-secondary btn-sm" onClick={() => { setVideoCallContact({ name: matter.client, matter: matter.title, myName: currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "You" }); setShowVideoCall(true); }}><Icon name="video" size={14} />Schedule Call</button>
               <button className="btn btn-primary btn-sm"><Icon name="edit" size={14} />Update Status</button>
             </div>
           </div>
@@ -2254,7 +2254,7 @@ export default function CounselBridge() {
                   <div className="card" style={{ padding: 18 }}>
                     <div style={{ fontSize: 14, fontWeight: 600, color: "var(--gray-800)", marginBottom: 12 }}>Upcoming</div>
                     {[
-                      { label: "Video Call — Sarah Johnson", date: "Today 2:00 PM", icon: "video", color: "blue", onClick: () => { setVideoCallContact({ name: "Sarah Johnson", matter: "Johnson Divorce Proceeding" }); setShowVideoCall(true); } },
+                      { label: "Video Call — Sarah Johnson", date: "Today 2:00 PM", icon: "video", color: "blue", onClick: () => { setVideoCallContact({ name: "Sarah Johnson", matter: "Johnson Divorce Proceeding", myName: currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "You" }); setShowVideoCall(true); } },
                       { label: "Court Date — Amy Chen", date: "Apr 3, 9:00 AM", icon: "briefcase", color: "red" },
                       { label: "Document deadline — Johnson", date: "Mar 15", icon: "clock", color: "amber" },
                     ].map((ev, i) => (
@@ -2702,7 +2702,7 @@ export default function CounselBridge() {
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                   <button className="btn btn-secondary btn-sm"><Icon name="chevron_left" size={14} /></button>
                   <button className="btn btn-secondary btn-sm"><Icon name="chevron_right" size={14} /></button>
-                  <button className="btn btn-primary btn-sm" onClick={() => { setVideoCallContact({ name: "Sarah Johnson", matter: "Consultation" }); setShowVideoCall(true); }}><Icon name="plus" size={14} />Schedule Meeting</button>
+                  <button className="btn btn-primary btn-sm" onClick={() => { setVideoCallContact({ name: "Sarah Johnson", matter: "Consultation", myName: currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "You" }); setShowVideoCall(true); }}><Icon name="plus" size={14} />Schedule Meeting</button>
                 </div>
               </div>
 
@@ -2758,7 +2758,7 @@ export default function CounselBridge() {
                     {[
                       { time: "9:00 AM", label: "Review Chen exhibits", type: "briefcase", color: "var(--gray-400)", matter: "Chen v. Realty" },
                       { time: "11:30 AM", label: "Team standup", type: "users", color: "var(--purple)", matter: "All matters" },
-                      { time: "2:00 PM", label: "Video call — Sarah Johnson", type: "video", color: "var(--blue)", matter: "Johnson Divorce", onClick: () => { setVideoCallContact({ name: "Sarah Johnson", matter: "Johnson Divorce Proceeding" }); setShowVideoCall(true); } },
+                      { time: "2:00 PM", label: "Video call — Sarah Johnson", type: "video", color: "var(--blue)", matter: "Johnson Divorce", onClick: () => { setVideoCallContact({ name: "Sarah Johnson", matter: "Johnson Divorce Proceeding", myName: currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "You" }); setShowVideoCall(true); } },
                       { time: "4:00 PM", label: "Draft motion in limine", type: "file", color: "var(--gray-400)", matter: "Chen v. Realty" },
                     ].map((ev, i) => (
                       <div key={i} onClick={ev.onClick} style={{ display: "flex", gap: 10, padding: "9px 0", borderBottom: i < 3 ? "1px solid var(--gray-100)" : "none", alignItems: "center", cursor: ev.onClick ? "pointer" : "default", borderRadius: ev.onClick ? "var(--radius-sm)" : 0 }}>
