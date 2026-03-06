@@ -976,15 +976,13 @@ const NewMatterModal = ({ onClose, onCreated, currentUser }) => {
       const data = await MattersAPI.create({
         title: form.title,
         practiceArea: form.practiceArea,
-        description: form.notes,
+        notes: form.notes,
         billingType: form.billingType,
         retainerAmount: form.retainerAmount ? parseFloat(form.retainerAmount) : 0,
-        client: {
-          firstName: form.clientFirstName,
-          lastName: form.clientLastName,
-          email: form.clientEmail,
-          phone: form.clientPhone,
-        }
+        clientEmail: form.clientEmail,
+        clientFirstName: form.clientFirstName,
+        clientLastName: form.clientLastName,
+        clientPhone: form.clientPhone,
       });
       onCreated(data.matter);
     } catch (err) {
