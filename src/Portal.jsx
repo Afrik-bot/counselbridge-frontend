@@ -2982,7 +2982,7 @@ export default function CounselBridge() {
                   <div className="card" style={{ padding: 24 }}>
                     <div style={{ fontSize: 15, fontWeight: 700, color: "var(--gray-900)", marginBottom: 18 }}>Firm Profile</div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
-                      <div><label>Firm Name</label><input className="input" defaultValue="{currentFirm?.name || "Your Firm"}" /></div>
+                      <div><label>Firm Name</label><input className="input" defaultValue={currentFirm?.name || "Your Firm"} /></div>
                       <div><label>Portal URL</label><input className="input" defaultValue="rivera.counselbridge.io" /></div>
                       <div><label>Practice Area(s)</label><input className="input" defaultValue="Family Law, Litigation, Estate Planning, Corporate" /></div>
                       <div><label>Firm Phone</label><input className="input" defaultValue="(415) 555-0182" /></div>
