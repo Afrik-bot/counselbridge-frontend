@@ -247,37 +247,37 @@ const Icon = ({ name, size = 16, color = "currentColor", className = "" }) => {
 };
 
 // ─── MOCK DATA ────────────────────────────────────────────────────────────────
-const MATTERS = [
-  { id: 1, ref: "CB-2024-0042", title: "Johnson Divorce Proceeding", client: "Sarah Johnson", clientEmail: "sarah.johnson@email.com", status: "active", practice: "Family Law", attorney: "Alex Rivera", unread: 3, daysOpen: 42, nextDeadline: "Mar 15 — Financial Documents", urgency: "high", retainer: 5000, paid: 2800, nextStep: "Upload the requested financial documents so your attorney can complete the asset disclosure filing.", nextStepInternal: "Chase missing bank statements; file 12/A by March 20 or we lose the date." },
-  { id: 2, ref: "CB-2024-0039", title: "Martinez Estate Planning", client: "Carlos Martinez", clientEmail: "c.martinez@email.com", status: "pending_client", practice: "Estate Planning", attorney: "Alex Rivera", unread: 0, daysOpen: 18, nextDeadline: "Mar 20 — Signature Needed", urgency: "medium", retainer: 3500, paid: 3500, nextStep: "Please sign the trust documents we sent. Everything is ready — we just need your signature.", nextStepInternal: "Docusign sent March 8. Follow up if not signed by March 14." },
-  { id: 3, ref: "CB-2024-0031", title: "Chen v. Realty Group", client: "Amy Chen", clientEmail: "amy.chen@email.com", status: "active", practice: "Litigation", attorney: "Alex Rivera", unread: 2, daysOpen: 67, nextDeadline: "Apr 3 — Court Date", urgency: "high", retainer: 12000, paid: 8200, nextStep: "Your court date is confirmed for April 3 at 9:00 AM in Courtroom 4. Please arrive 30 minutes early.", nextStepInternal: "Prepare deposition summary and exhibits. Motion in limine deadline March 28." },
-  { id: 4, ref: "CB-2024-0044", title: "Rodriguez Personal Injury", client: "Manuel Rodriguez", clientEmail: "m.rodriguez@email.com", status: "active", practice: "Personal Injury", attorney: "Alex Rivera", unread: 0, daysOpen: 12, nextDeadline: null, urgency: "low", retainer: 0, paid: 0, nextStep: "We are reviewing the medical records you provided. We will be in touch within 5 business days.", nextStepInternal: "Medical records received. Need to review and assess liability. Invoice overdue." },
-  { id: 5, ref: "CB-2024-0047", title: "Park Business Acquisition", client: "Ji-soo Park", clientEmail: "jisoo.park@email.com", status: "intake", practice: "Corporate", attorney: "Alex Rivera", unread: 1, daysOpen: 2, nextDeadline: null, urgency: "medium", retainer: 0, paid: 0, nextStep: "We have received your inquiry and will be in touch within 1 business day to discuss your matter.", nextStepInternal: "New inquiry — needs conflict check before opening. Practice area: M&A." },
+// const MATTERS = [
+  { id: 1, ref: "CB-2024-0042", title: "Johnson Divorce Proceeding", client: selectedMatter?.client || "Client", clientEmail: "sarah.johnson@email.com", status: "active", practice: "Family Law", attorney: `${currentUser ? currentUser.firstName + " " + currentUser.lastName : "Attorney"}`, unread: 3, daysOpen: 42, nextDeadline: "Mar 15 — Financial Documents", urgency: "high", retainer: 5000, paid: 2800, nextStep: "Upload the requested financial documents so your attorney can complete the asset disclosure filing.", nextStepInternal: "Chase missing bank statements; file 12/A by March 20 or we lose the date." },
+  { id: 2, ref: "CB-2024-0039", title: "Martinez Estate Planning", client: "Carlos Martinez", clientEmail: "c.martinez@email.com", status: "pending_client", practice: "Estate Planning", attorney: `${currentUser ? currentUser.firstName + " " + currentUser.lastName : "Attorney"}`, unread: 0, daysOpen: 18, nextDeadline: "Mar 20 — Signature Needed", urgency: "medium", retainer: 3500, paid: 3500, nextStep: "Please sign the trust documents we sent. Everything is ready — we just need your signature.", nextStepInternal: "Docusign sent March 8. Follow up if not signed by March 14." },
+  { id: 3, ref: "CB-2024-0031", title: "Chen v. Realty Group", client: "Amy Chen", clientEmail: "amy.chen@email.com", status: "active", practice: "Litigation", attorney: `${currentUser ? currentUser.firstName + " " + currentUser.lastName : "Attorney"}`, unread: 2, daysOpen: 67, nextDeadline: "Apr 3 — Court Date", urgency: "high", retainer: 12000, paid: 8200, nextStep: "Your court date is confirmed for April 3 at 9:00 AM in Courtroom 4. Please arrive 30 minutes early.", nextStepInternal: "Prepare deposition summary and exhibits. Motion in limine deadline March 28." },
+  { id: 4, ref: "CB-2024-0044", title: "Rodriguez Personal Injury", client: "Manuel Rodriguez", clientEmail: "m.rodriguez@email.com", status: "active", practice: "Personal Injury", attorney: `${currentUser ? currentUser.firstName + " " + currentUser.lastName : "Attorney"}`, unread: 0, daysOpen: 12, nextDeadline: null, urgency: "low", retainer: 0, paid: 0, nextStep: "We are reviewing the medical records you provided. We will be in touch within 5 business days.", nextStepInternal: "Medical records received. Need to review and assess liability. Invoice overdue." },
+  { id: 5, ref: "CB-2024-0047", title: "Park Business Acquisition", client: "Ji-soo Park", clientEmail: "jisoo.park@email.com", status: "intake", practice: "Corporate", attorney: `${currentUser ? currentUser.firstName + " " + currentUser.lastName : "Attorney"}`, unread: 1, daysOpen: 2, nextDeadline: null, urgency: "medium", retainer: 0, paid: 0, nextStep: "We have received your inquiry and will be in touch within 1 business day to discuss your matter.", nextStepInternal: "New inquiry — needs conflict check before opening. Practice area: M&A." },
 ];
 
 const MESSAGES = {
   1: [
-    { id: 1, sender: "client", name: "Sarah Johnson", body: "Hi, just wanted to check in — is there any update on when the financial disclosure needs to be filed? I'm a bit worried about the deadline.", time: "9:14 AM", read: true, internal: false },
-    { id: 2, sender: "attorney", name: "Alex Rivera", body: "Hi Sarah, yes — we have a deadline of March 20 to file. I need to receive your bank statements and last two years of tax returns before I can complete the form. I sent you a document request last week — were you able to find those?", time: "10:32 AM", read: true, internal: false, aiGenerated: false },
-    { id: 3, sender: "client", name: "Sarah Johnson", body: "Oh yes, I have them. I'll upload them tonight. Is there a specific format needed?", time: "11:05 AM", read: true, internal: false },
+    { id: 1, sender: "client", name: selectedMatter?.client || "Client", body: "Hi, just wanted to check in — is there any update on when the financial disclosure needs to be filed? I'm a bit worried about the deadline.", time: "9:14 AM", read: true, internal: false },
+    { id: 2, sender: "attorney", name: `${currentUser ? currentUser.firstName + " " + currentUser.lastName : "Attorney"}`, body: "Hi Sarah, yes — we have a deadline of March 20 to file. I need to receive your bank statements and last two years of tax returns before I can complete the form. I sent you a document request last week — were you able to find those?", time: "10:32 AM", read: true, internal: false, aiGenerated: false },
+    { id: 3, sender: "client", name: selectedMatter?.client || "Client", body: "Oh yes, I have them. I'll upload them tonight. Is there a specific format needed?", time: "11:05 AM", read: true, internal: false },
     { id: 4, sender: "staff", name: "Priya Patel (Paralegal)", body: "Note: Sarah called at 2pm — confirmed she'll upload by end of day.", time: "2:18 PM", read: true, internal: true },
-    { id: 5, sender: "client", name: "Sarah Johnson", body: "I just tried to upload the bank statements but I'm getting an error. Can you help?", time: "8:47 PM", read: false, internal: false },
-    { id: 6, sender: "client", name: "Sarah Johnson", body: "Never mind — it worked! I uploaded everything. Please let me know if you need anything else.", time: "9:02 PM", read: false, internal: false },
+    { id: 5, sender: "client", name: selectedMatter?.client || "Client", body: "I just tried to upload the bank statements but I'm getting an error. Can you help?", time: "8:47 PM", read: false, internal: false },
+    { id: 6, sender: "client", name: selectedMatter?.client || "Client", body: "Never mind — it worked! I uploaded everything. Please let me know if you need anything else.", time: "9:02 PM", read: false, internal: false },
   ],
   3: [
     { id: 1, sender: "client", name: "Amy Chen", body: "Hello, I got a letter from opposing counsel today. It looks like they're requesting additional discovery. Is this normal?", time: "Yesterday, 3:22 PM", read: true, internal: false },
-    { id: 2, sender: "attorney", name: "Alex Rivera", body: "Hi Amy, yes — this is a standard part of the litigation process. I've reviewed the letter and will respond on your behalf. No action required from you at this time.", time: "Yesterday, 5:01 PM", read: true, internal: false, aiGenerated: true },
+    { id: 2, sender: "attorney", name: `${currentUser ? currentUser.firstName + " " + currentUser.lastName : "Attorney"}`, body: "Hi Amy, yes — this is a standard part of the litigation process. I've reviewed the letter and will respond on your behalf. No action required from you at this time.", time: "Yesterday, 5:01 PM", read: true, internal: false, aiGenerated: true },
     { id: 3, sender: "client", name: "Amy Chen", body: "Thank you. I just want to make sure we're on track for April 3rd.", time: "Today, 8:30 AM", read: false, internal: false },
   ],
 };
 
 const DOCUMENTS = {
   1: [
-    { id: 1, name: "Bank Statements - Jan-Dec 2023.pdf", type: "Financial", size: "2.4 MB", uploaded: "Mar 10", by: "Sarah Johnson", aiLabel: "Financial Statement", confidence: 0.96, shared: true },
-    { id: 2, name: "Tax Return 2022.pdf", type: "Financial", size: "1.1 MB", uploaded: "Mar 10", by: "Sarah Johnson", aiLabel: "Tax Document", confidence: 0.98, shared: true },
-    { id: 3, name: "Tax Return 2023.pdf", type: "Financial", size: "1.3 MB", uploaded: "Mar 10", by: "Sarah Johnson", aiLabel: "Tax Document", confidence: 0.98, shared: true },
-    { id: 4, name: "Retainer Agreement - Johnson.pdf", type: "Contract", size: "0.4 MB", uploaded: "Feb 28", by: "Alex Rivera", aiLabel: "Retainer Agreement", confidence: 0.99, shared: true },
-    { id: 5, name: "FL 150 Income Expense Declaration.docx", type: "Court Filing", size: "0.3 MB", uploaded: "Mar 5", by: "Alex Rivera", aiLabel: "Court Filing", confidence: 0.91, shared: false },
+    { id: 1, name: "Bank Statements - Jan-Dec 2023.pdf", type: "Financial", size: "2.4 MB", uploaded: "Mar 10", by: selectedMatter?.client || "Client", aiLabel: "Financial Statement", confidence: 0.96, shared: true },
+    { id: 2, name: "Tax Return 2022.pdf", type: "Financial", size: "1.1 MB", uploaded: "Mar 10", by: selectedMatter?.client || "Client", aiLabel: "Tax Document", confidence: 0.98, shared: true },
+    { id: 3, name: "Tax Return 2023.pdf", type: "Financial", size: "1.3 MB", uploaded: "Mar 10", by: selectedMatter?.client || "Client", aiLabel: "Tax Document", confidence: 0.98, shared: true },
+    { id: 4, name: "Retainer Agreement - Johnson.pdf", type: "Contract", size: "0.4 MB", uploaded: "Feb 28", by: `${currentUser ? currentUser.firstName + " " + currentUser.lastName : "Attorney"}`, aiLabel: "Retainer Agreement", confidence: 0.99, shared: true },
+    { id: 5, name: "FL 150 Income Expense Declaration.docx", type: "Court Filing", size: "0.3 MB", uploaded: "Mar 5", by: `${currentUser ? currentUser.firstName + " " + currentUser.lastName : "Attorney"}`, aiLabel: "Court Filing", confidence: 0.91, shared: false },
   ],
 };
 
@@ -306,18 +306,18 @@ const TIMELINE = {
     { id: 3, date: "Mar 5", type: "document", icon: "file", color: "blue", text: "Document request sent to client: bank statements, tax returns, mortgage statement" },
     { id: 4, date: "Mar 1", type: "payment", icon: "dollar", color: "green", text: "Invoice INV-2024-001 paid — $2,800 received" },
     { id: 5, date: "Feb 28", type: "message", icon: "message", color: "gray", text: "Retainer agreement signed and executed" },
-    { id: 6, date: "Feb 27", type: "intake", icon: "users", color: "teal", text: "Matter opened — Client portal invitation sent to Sarah Johnson" },
+    { id: 6, date: "Feb 27", type: "intake", icon: "users", color: "teal", text: "Matter opened — Client portal invitation sent to client" },
   ],
 };
 
-const AI_QUEUE = [
+const aiQueue = [
   { id: 1, matterId: 1, matterTitle: "Johnson Divorce", agent: "PlainLanguageAgent", type: "Case Update", preview: "Your attorney has reviewed the financial documents you uploaded. The asset disclosure form is now being prepared and will be filed with the court before the March 20 deadline. No action is needed from you at this time.", generated: "10 min ago" },
   { id: 2, matterId: 3, matterTitle: "Chen v. Realty", agent: "MessageDraftAgent", type: "Message Draft", preview: "Hi Amy, your court date of April 3rd is confirmed and we are fully prepared. I'll send you a preparation guide this week covering what to expect on the day and how to present yourself effectively in court.", generated: "25 min ago" },
 ];
 
 const DIGEST_TEXT = `Good morning, Alex. Here's your briefing for today, Tuesday March 3rd.
 
-You have **5 unread client messages** across 2 matters. Sarah Johnson (Johnson Divorce) sent 2 messages last night — she successfully uploaded her financial documents.
+You have unread client messages across your active matters. Check the inbox to review and respond.
 
 **Attention needed:**
 • Johnson Divorce has 3 outstanding document requests (mortgage, retirement, business docs) — deadline in 12 days
@@ -1637,7 +1637,7 @@ export default function CounselBridge() {
 
             {authMode === "signup" ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 13 }}>
-                <div><label>Firm Name *</label><input className="input" placeholder="Rivera & Associates" value={regData.firmName} onChange={e => setReg("firmName", e.target.value)} /></div>
+                <div><label>Firm Name *</label><input className="input" placeholder=currentFirm?.name || "Your Firm" value={regData.firmName} onChange={e => setReg("firmName", e.target.value)} /></div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                   <div><label>First Name *</label><input className="input" placeholder="Alex" value={regData.firstName} onChange={e => setReg("firstName", e.target.value)} /></div>
                   <div><label>Last Name</label><input className="input" placeholder="Rivera" value={regData.lastName} onChange={e => setReg("lastName", e.target.value)} /></div>
@@ -1735,8 +1735,8 @@ export default function CounselBridge() {
             <span style={{ fontSize: 12, color: "var(--gray-400)", marginLeft: 4 }}>· {currentFirm?.name || "Your Firm"}</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ fontSize: 13.5, color: "var(--gray-600)" }}>Sarah Johnson</span>
-            <Avatar name="Sarah Johnson" size={32} color="teal" />
+            <span style={{ fontSize: 13.5, color: "var(--gray-600)" }}>{matters[0]?.client || "Your Client"}</span>
+            <Avatar name=selectedMatter?.client || "Client" size={32} color="teal" />
             <button className="btn btn-ghost btn-sm" onClick={() => setView("login")}><Icon name="log-out" size={15} /></button>
           </div>
         </div>
@@ -1815,7 +1815,7 @@ export default function CounselBridge() {
                     <Icon name="video" size={20} color="var(--blue)" />
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: "var(--gray-800)", marginBottom: 2 }}>Video consultation with Alex Rivera</div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: "var(--gray-800)", marginBottom: 2 }}>{`Video consultation with ${currentUser ? currentUser.firstName + " " + currentUser.lastName : "Attorney"}`}</div>
                     <div style={{ fontSize: 13, color: "var(--gray-500)" }}>Today · 2:00 PM · ~30 minutes</div>
                   </div>
                   <button className="btn btn-primary btn-sm" onClick={() => { setVideoCallContact({ name: matter?.attorney || "Attorney", matter: matter?.title || "", myName: currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "You" }); setShowVideoCall(true); }}>
@@ -1840,9 +1840,9 @@ export default function CounselBridge() {
             <div className="fade-in">
               <div className="card" style={{ overflow: "hidden" }}>
                 <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--gray-200)", display: "flex", alignItems: "center", gap: 10 }}>
-                  <Avatar name="Alex Rivera" size={28} color="blue" />
+                  <Avatar name={currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "Attorney"} size={28} color="blue" />
                   <div>
-                    <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--gray-800)" }}>Alex Rivera</div>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--gray-800)" }}>{currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "Attorney"}</div>
                     <div style={{ fontSize: 12, color: "var(--gray-400)" }}>{currentFirm?.name || "Your Firm"} · Your Attorney</div>
                   </div>
                   <div style={{ marginLeft: "auto" }}>
@@ -1863,8 +1863,8 @@ export default function CounselBridge() {
                   <div ref={msgEndRef} />
                 </div>
                 <div style={{ padding: "12px 14px", borderTop: "1px solid var(--gray-200)", display: "flex", gap: 8 }}>
-                  <input className="input" style={{ flex: 1 }} placeholder="Message your attorney..." value={newMsg} onChange={e => setNewMsg(e.target.value)} onKeyDown={e => { if(e.key==="Enter"&&newMsg.trim()){ const updated={...messages}; if(!updated[1])updated[1]=[]; updated[1]=[...updated[1],{id:Date.now(),sender:"client",name:"Sarah Johnson",body:newMsg,time:"Just now",read:false,internal:false}]; setMessages(updated); setNewMsg(""); } }} />
-                  <button className="btn btn-primary btn-sm" onClick={() => { if(!newMsg.trim())return; const updated={...messages}; if(!updated[1])updated[1]=[]; updated[1]=[...updated[1],{id:Date.now(),sender:"client",name:"Sarah Johnson",body:newMsg,time:"Just now",read:false,internal:false}]; setMessages(updated); setNewMsg(""); }}><Icon name="send" size={14} /></button>
+                  <input className="input" style={{ flex: 1 }} placeholder="Message your attorney..." value={newMsg} onChange={e => setNewMsg(e.target.value)} onKeyDown={e => { if(e.key==="Enter"&&newMsg.trim()){ const updated={...messages}; if(!updated[1])updated[1]=[]; updated[1]=[...updated[1],{id:Date.now(),sender:"client",name:selectedMatter?.client || "Client",body:newMsg,time:"Just now",read:false,internal:false}]; setMessages(updated); setNewMsg(""); } }} />
+                  <button className="btn btn-primary btn-sm" onClick={() => { if(!newMsg.trim())return; const updated={...messages}; if(!updated[1])updated[1]=[]; updated[1]=[...updated[1],{id:Date.now(),sender:"client",name:selectedMatter?.client || "Client",body:newMsg,time:"Just now",read:false,internal:false}]; setMessages(updated); setNewMsg(""); }}><Icon name="send" size={14} /></button>
                 </div>
               </div>
             </div>
@@ -2259,7 +2259,7 @@ export default function CounselBridge() {
                   <div className="card" style={{ padding: 18 }}>
                     <div style={{ fontSize: 14, fontWeight: 600, color: "var(--gray-800)", marginBottom: 12 }}>Upcoming</div>
                     {[
-                      { label: "Video Call — Sarah Johnson", date: "Today 2:00 PM", icon: "video", color: "blue", onClick: () => { setVideoCallContact({ name: "Sarah Johnson", matter: "Johnson Divorce Proceeding", myName: currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "You" }); setShowVideoCall(true); } },
+                      { label: `Video Call — ${matters[0]?.client || "Client"}`, date: "Today 2:00 PM", icon: "video", color: "blue", onClick: () => { setVideoCallContact({ name: selectedMatter?.client || "Client", matter: "Johnson Divorce Proceeding", myName: currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "You" }); setShowVideoCall(true); } },
                       { label: "Court Date — Amy Chen", date: "Apr 3, 9:00 AM", icon: "briefcase", color: "red" },
                       { label: "Document deadline — Johnson", date: "Mar 15", icon: "clock", color: "amber" },
                     ].map((ev, i) => (
@@ -2707,7 +2707,7 @@ export default function CounselBridge() {
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                   <button className="btn btn-secondary btn-sm"><Icon name="chevron_left" size={14} /></button>
                   <button className="btn btn-secondary btn-sm"><Icon name="chevron_right" size={14} /></button>
-                  <button className="btn btn-primary btn-sm" onClick={() => { setVideoCallContact({ name: "Sarah Johnson", matter: "Consultation", myName: currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "You" }); setShowVideoCall(true); }}><Icon name="plus" size={14} />Schedule Meeting</button>
+                  <button className="btn btn-primary btn-sm" onClick={() => { setVideoCallContact({ name: selectedMatter?.client || "Client", matter: "Consultation", myName: currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "You" }); setShowVideoCall(true); }}><Icon name="plus" size={14} />Schedule Meeting</button>
                 </div>
               </div>
 
@@ -2763,7 +2763,7 @@ export default function CounselBridge() {
                     {[
                       { time: "9:00 AM", label: "Review Chen exhibits", type: "briefcase", color: "var(--gray-400)", matter: "Chen v. Realty" },
                       { time: "11:30 AM", label: "Team standup", type: "users", color: "var(--purple)", matter: "All matters" },
-                      { time: "2:00 PM", label: "Video call — Sarah Johnson", type: "video", color: "var(--blue)", matter: "Johnson Divorce", onClick: () => { setVideoCallContact({ name: "Sarah Johnson", matter: "Johnson Divorce Proceeding", myName: currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "You" }); setShowVideoCall(true); } },
+                      { time: "2:00 PM", label: `Video call — ${matters[0]?.client || "Client"}`, type: "video", color: "var(--blue)", matter: matters[0]?.title || "Matter", onClick: () => { setVideoCallContact({ name: selectedMatter?.client || "Client", matter: "Johnson Divorce Proceeding", myName: currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "You" }); setShowVideoCall(true); } },
                       { time: "4:00 PM", label: "Draft motion in limine", type: "file", color: "var(--gray-400)", matter: "Chen v. Realty" },
                     ].map((ev, i) => (
                       <div key={i} onClick={ev.onClick} style={{ display: "flex", gap: 10, padding: "9px 0", borderBottom: i < 3 ? "1px solid var(--gray-100)" : "none", alignItems: "center", cursor: ev.onClick ? "pointer" : "default", borderRadius: ev.onClick ? "var(--radius-sm)" : 0 }}>
@@ -2859,7 +2859,7 @@ export default function CounselBridge() {
               {/* Members */}
               <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 28 }}>
                 {[
-                  { name: "Alex Rivera", role: "Attorney · Managing Partner", color: "blue", matters: 5, email: "alex@riveralaw.com", bar: "CA Bar #294812", status: "online", tasks: 3, responseTime: "1.8h" },
+                  { name: `${currentUser ? currentUser.firstName + " " + currentUser.lastName : "Attorney"}`, role: "Attorney · Managing Partner", color: "blue", matters: 5, email: currentUser?.email || "attorney@yourfirm.com", bar: currentUser?.barNumber || "—", status: "online", tasks: 3, responseTime: "1.8h" },
                   { name: "Priya Patel", role: "Paralegal", color: "teal", matters: 5, email: "priya@riveralaw.com", bar: null, status: "online", tasks: 6, responseTime: "0.9h" },
                   { name: "Jordan Kim", role: "Legal Admin", color: "purple", matters: 0, email: "jordan@riveralaw.com", bar: null, status: "away", tasks: 5, responseTime: "3.2h" },
                 ].map(member => (
@@ -2900,19 +2900,19 @@ export default function CounselBridge() {
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>
                 {[
                   { col: "To Do", color: "var(--gray-400)", items: [
-                    { task: "Review motion in limine draft", matter: "Chen v. Realty", assignee: "Alex Rivera", due: "Mar 28", priority: "high" },
+                    { task: "Review motion in limine draft", matter: "Chen v. Realty", assignee: `${currentUser ? currentUser.firstName + " " + currentUser.lastName : "Attorney"}`, due: "Mar 28", priority: "high" },
                     { task: "Send retainer agreement to Park", matter: "Park Acquisition", assignee: "Priya Patel", due: "Mar 5", priority: "medium" },
                     { task: "Update FL-150 with new figures", matter: "Johnson Divorce", assignee: "Priya Patel", due: "Mar 12", priority: "high" },
                   ]},
                   { col: "In Progress", color: "var(--blue)", items: [
-                    { task: "Prepare deposition exhibits", matter: "Chen v. Realty", assignee: "Alex Rivera", due: "Mar 20", priority: "high" },
+                    { task: "Prepare deposition exhibits", matter: "Chen v. Realty", assignee: `${currentUser ? currentUser.firstName + " " + currentUser.lastName : "Attorney"}`, due: "Mar 20", priority: "high" },
                     { task: "Follow up on bank statements", matter: "Johnson Divorce", assignee: "Priya Patel", due: "Mar 10", priority: "medium" },
-                    { task: "Draft trust schedule A", matter: "Martinez Estate", assignee: "Alex Rivera", due: "Mar 18", priority: "low" },
+                    { task: "Draft trust schedule A", matter: "Martinez Estate", assignee: `${currentUser ? currentUser.firstName + " " + currentUser.lastName : "Attorney"}`, due: "Mar 18", priority: "low" },
                   ]},
                   { col: "Done", color: "var(--green)", items: [
                     { task: "Open matter file", matter: "Park Acquisition", assignee: "Jordan Kim", due: "Mar 2", priority: "low" },
                     { task: "Send portal invite to Sarah Johnson", matter: "Johnson Divorce", assignee: "Jordan Kim", due: "Feb 27", priority: "medium" },
-                    { task: "Conflict check — Park", matter: "Park Acquisition", assignee: "Alex Rivera", due: "Mar 1", priority: "high" },
+                    { task: "Conflict check — Park", matter: "Park Acquisition", assignee: `${currentUser ? currentUser.firstName + " " + currentUser.lastName : "Attorney"}`, due: "Mar 1", priority: "high" },
                   ]},
                 ].map(col => (
                   <div key={col.col}>
@@ -2928,7 +2928,7 @@ export default function CounselBridge() {
                           <div style={{ fontSize: 12, color: "var(--gray-400)", marginBottom: 8 }}>{item.matter}</div>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                              <Avatar name={item.assignee} size={20} color={item.assignee === "Alex Rivera" ? "blue" : item.assignee === "Priya Patel" ? "teal" : "purple"} />
+                              <Avatar name={item.assignee} size={20} color={item.assignee === `${currentUser ? currentUser.firstName + " " + currentUser.lastName : "Attorney"}` ? "blue" : item.assignee === "Priya Patel" ? "teal" : "purple"} />
                               <span style={{ fontSize: 11.5, color: "var(--gray-500)" }}>{item.assignee.split(" ")[0]}</span>
                             </div>
                             <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
@@ -2981,15 +2981,15 @@ export default function CounselBridge() {
                     <div style={{ fontSize: 15, fontWeight: 700, color: "var(--gray-900)", marginBottom: 18 }}>Firm Profile</div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
                       <div><label>Firm Name</label><input className="input" defaultValue={currentFirm?.name || "Your Firm"} /></div>
-                      <div><label>Portal URL</label><input className="input" defaultValue="rivera.counselbridge.io" /></div>
-                      <div><label>Practice Area(s)</label><input className="input" defaultValue="Family Law, Litigation, Estate Planning, Corporate" /></div>
-                      <div><label>Firm Phone</label><input className="input" defaultValue="(415) 555-0182" /></div>
-                      <div><label>State Bar Number</label><input className="input" defaultValue="CA Bar #294812" /></div>
-                      <div><label>Jurisdiction</label><input className="input" defaultValue="California" /></div>
+                      <div><label>Portal URL</label><input className="input" defaultValue={`${currentFirm?.slug || "yourfirm"}.counselbridge.io`} /></div>
+                      <div><label>Practice Area(s)</label><input className="input" defaultValue={currentFirm?.practiceAreas || ""} /></div>
+                      <div><label>Firm Phone</label><input className="input" defaultValue={currentFirm?.phone || ""} /></div>
+                      <div><label>State Bar Number</label><input className="input" defaultValue={currentUser?.barNumber || ""} /></div>
+                      <div><label>Jurisdiction</label><input className="input" defaultValue={currentFirm?.jurisdiction || ""} /></div>
                     </div>
                     <div style={{ marginBottom: 16 }}>
                       <label>Firm Address</label>
-                      <input className="input" defaultValue="1234 Market Street, Suite 500, San Francisco, CA 94102" />
+                      <input className="input" defaultValue={currentFirm?.address || ""} />
                     </div>
                     <div style={{ display: "flex", gap: 10, alignItems: "center", padding: "14px 16px", background: "var(--gray-50)", borderRadius: "var(--radius-md)", border: "1.5px dashed var(--gray-300)", marginBottom: 16, cursor: "pointer" }}>
                       <Icon name="upload" size={18} color="var(--gray-400)" />
@@ -3116,10 +3116,10 @@ export default function CounselBridge() {
                     <div style={{ fontSize: 13, color: "var(--gray-500)", marginBottom: 16 }}>Immutable record of all platform actions · Retained 7 years</div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
                       {[
-                        { time: "Today 10:32 AM", user: "Alex Rivera", action: "Approved AI-generated case update", matter: "Johnson Divorce", type: "ai" },
-                        { time: "Today 9:14 AM", user: "Sarah Johnson", action: "Uploaded 3 documents", matter: "Johnson Divorce", type: "document" },
-                        { time: "Today 8:47 AM", user: "Alex Rivera", action: "Sent message to client", matter: "Johnson Divorce", type: "message" },
-                        { time: "Yesterday 5:01 PM", user: "Alex Rivera", action: "Sent invoice INV-2024-009", matter: "Chen v. Realty", type: "billing" },
+                        { time: "Today 10:32 AM", user: `${currentUser ? currentUser.firstName + " " + currentUser.lastName : "Attorney"}`, action: "Approved AI-generated case update", matter: "Johnson Divorce", type: "ai" },
+                        { time: "Today 9:14 AM", user: selectedMatter?.client || "Client", action: "Uploaded 3 documents", matter: "Johnson Divorce", type: "document" },
+                        { time: "Today 8:47 AM", user: `${currentUser ? currentUser.firstName + " " + currentUser.lastName : "Attorney"}`, action: "Sent message to client", matter: "Johnson Divorce", type: "message" },
+                        { time: "Yesterday 5:01 PM", user: `${currentUser ? currentUser.firstName + " " + currentUser.lastName : "Attorney"}`, action: "Sent invoice INV-2024-009", matter: "Chen v. Realty", type: "billing" },
                         { time: "Yesterday 3:22 PM", user: "Amy Chen", action: "Logged in to client portal", matter: "Chen v. Realty", type: "auth" },
                         { time: "Yesterday 2:18 PM", user: "Priya Patel", action: "Added internal note", matter: "Johnson Divorce", type: "note" },
                       ].map((log, i) => (
