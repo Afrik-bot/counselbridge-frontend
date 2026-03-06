@@ -806,6 +806,139 @@ const VideoCall = ({ contact, onClose, isClient }) => {
   return null;
 };
 
+// ─── INVOICE MODAL ────────────────────────────────────────────────────────────
+const InvoiceModal = ({ matters, onClose, onCreated }) => {
+  const [form, setForm] = useState({ matterId: matters[0]?.id || "", description: "", amount: "", dueDate: "", sendNow: true });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const handleSubmit = async (sendNow) => {
+    if (!form.matterId || !form.description || !form.amount || !form.dueDate) { setError("Please fill in all fields."); return; }
+    setSaving(true); setError("");
+    try {
+      const data = await InvoicesAPI.create({
+        matterId: form.matterId,
+        description: form.description,
+        amountCents: Math.round(parseFloat(form.amount) * 100),
+        dueDate: form.dueDate,
+        status: sendNow ? "sent" : "draft",
+      });
+      if (sendNow) await InvoicesAPI.send(data.invoice.id).catch(() => {});
+      onCreated(data.invoice);
+    } catch (err) {
+      setError(err.message || "Failed to create invoice.");
+    }
+    setSaving(false);
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(15,34,64,0.6)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }} onClick={onClose}>
+      <div className="card fade-in" style={{ width: 480, padding: 28 }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+          <h3 style={{ fontSize: 17, fontWeight: 700, color: "var(--navy)" }}>Create Invoice</h3>
+          <button className="btn btn-ghost btn-sm" onClick={onClose}><Icon name="x" size={16} /></button>
+        </div>
+        {error && <div style={{ background: "var(--red-pale)", color: "var(--red)", border: "1px solid #FECACA", borderRadius: "var(--radius-sm)", padding: "10px 14px", fontSize: 13.5, marginBottom: 14 }}>{error}</div>}
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div><label>Matter *</label>
+            <select className="input select" value={form.matterId} onChange={e => set("matterId", e.target.value)}>
+              {matters.map(m => <option key={m.id} value={m.id}>{m.title}</option>)}
+            </select>
+          </div>
+          <div><label>Description *</label><input className="input" placeholder="Legal services — March 2026" value={form.description} onChange={e => set("description", e.target.value)} /></div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div><label>Amount ($) *</label><input className="input" type="number" placeholder="1800.00" value={form.amount} onChange={e => set("amount", e.target.value)} /></div>
+            <div><label>Due Date *</label><input className="input" type="date" value={form.dueDate} onChange={e => set("dueDate", e.target.value)} /></div>
+          </div>
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 4 }}>
+            <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+            <button className="btn btn-secondary" disabled={saving} onClick={() => handleSubmit(false)}>Save Draft</button>
+            <button className="btn btn-primary" disabled={saving} onClick={() => handleSubmit(true)}><Icon name="send" size={14} />{saving ? "Creating..." : "Send to Client"}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── DOCUMENT UPLOAD MODAL ─────────────────────────────────────────────────────
+const DocumentUploadModal = ({ matters, onClose, onUploaded, defaultMatterId }) => {
+  const [matterId, setMatterId] = useState(defaultMatterId || matters[0]?.id || "");
+  const [accessLevel, setAccessLevel] = useState("INTERNAL");
+  const [files, setFiles] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
+  const inputRef = useRef(null);
+
+  const handleUpload = async () => {
+    if (!files.length) { setError("Please select at least one file."); return; }
+    if (!matterId) { setError("Please select a matter."); return; }
+    setUploading(true); setError("");
+    try {
+      const data = await DocumentsAPI.upload(matterId, Array.from(files), accessLevel);
+      onUploaded(data.documents || []);
+    } catch (err) {
+      setError(err.message || "Upload failed. Please try again.");
+    }
+    setUploading(false);
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(15,34,64,0.6)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }} onClick={onClose}>
+      <div className="card fade-in" style={{ width: 480, padding: 28 }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+          <h3 style={{ fontSize: 17, fontWeight: 700, color: "var(--navy)" }}>Upload Documents</h3>
+          <button className="btn btn-ghost btn-sm" onClick={onClose}><Icon name="x" size={16} /></button>
+        </div>
+        {error && <div style={{ background: "var(--red-pale)", color: "var(--red)", border: "1px solid #FECACA", borderRadius: "var(--radius-sm)", padding: "10px 14px", fontSize: 13.5, marginBottom: 14 }}>{error}</div>}
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div><label>Matter *</label>
+            <select className="input select" value={matterId} onChange={e => setMatterId(e.target.value)}>
+              {matters.map(m => <option key={m.id} value={m.id}>{m.title}</option>)}
+            </select>
+          </div>
+          <div><label>Visibility</label>
+            <select className="input select" value={accessLevel} onChange={e => setAccessLevel(e.target.value)}>
+              <option value="INTERNAL">Internal only (attorney & staff)</option>
+              <option value="CLIENT">Shared with client</option>
+            </select>
+          </div>
+          <div
+            style={{ border: "2px dashed var(--gray-300)", borderRadius: "var(--radius-md)", padding: 24, textAlign: "center", cursor: "pointer", background: files.length ? "var(--blue-pale)" : "var(--gray-50)" }}
+            onClick={() => inputRef.current?.click()}
+            onDragOver={e => e.preventDefault()}
+            onDrop={e => { e.preventDefault(); setFiles(e.dataTransfer.files); }}>
+            <input ref={inputRef} type="file" multiple style={{ display: "none" }} onChange={e => setFiles(e.target.files)} />
+            <Icon name="upload" size={28} color="var(--gray-400)" />
+            <p style={{ fontSize: 14, color: "var(--gray-600)", marginTop: 8 }}>
+              {files.length ? `${files.length} file(s) selected` : "Click or drag files here"}
+            </p>
+            <p style={{ fontSize: 12, color: "var(--gray-400)", marginTop: 4 }}>PDF, DOCX, JPG, PNG, ZIP up to 50MB</p>
+          </div>
+          {files.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              {Array.from(files).map((f, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", background: "var(--gray-50)", borderRadius: "var(--radius-sm)", fontSize: 13 }}>
+                  <Icon name="file" size={13} color="var(--blue)" />
+                  <span style={{ flex: 1, color: "var(--gray-700)" }}>{f.name}</span>
+                  <span style={{ color: "var(--gray-400)" }}>{(f.size / 1024 / 1024).toFixed(1)} MB</span>
+                </div>
+              ))}
+            </div>
+          )}
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 4 }}>
+            <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+            <button className="btn btn-primary" disabled={uploading || !files.length} onClick={handleUpload}>
+              <Icon name="upload" size={14} />{uploading ? "Uploading..." : "Upload Files"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ─── NEW MATTER MODAL ─────────────────────────────────────────────────────────
 const NewMatterModal = ({ onClose, onCreated, currentUser }) => {
   const [form, setForm] = useState({
@@ -1078,10 +1211,13 @@ export default function CounselBridge() {
     !searchQ || m.title.toLowerCase().includes(searchQ.toLowerCase()) || m.client.toLowerCase().includes(searchQ.toLowerCase()) || m.practice.toLowerCase().includes(searchQ.toLowerCase())
   );
 
-  // ─── LOGIN SCREEN ──────────────────────────────────────────────────────────
+  // ─── LOGIN / SIGNUP SCREEN ───────────────────────────────────────────────────
   if (view === "login") {
-    const handleLogin = async (e) => {
-      e?.preventDefault();
+    const [authMode, setAuthMode] = useState("login"); // login | signup
+    const [regData, setRegData] = useState({ firmName: "", firstName: "", lastName: "", email: "", password: "", confirmPassword: "" });
+    const setReg = (k, v) => setRegData(r => ({ ...r, [k]: v }));
+
+    const handleLogin = async () => {
       if (!loginEmail.trim() || !loginPassword.trim()) { setLoginError("Please enter your email and password."); return; }
       setLoginLoading(true); setLoginError("");
       try {
@@ -1092,6 +1228,23 @@ export default function CounselBridge() {
         setActivePage("dashboard");
       } catch (err) {
         setLoginError(err.message || "Invalid email or password.");
+      }
+      setLoginLoading(false);
+    };
+
+    const handleSignup = async () => {
+      if (!regData.firmName || !regData.firstName || !regData.email || !regData.password) { setLoginError("Please fill in all required fields."); return; }
+      if (regData.password !== regData.confirmPassword) { setLoginError("Passwords do not match."); return; }
+      if (regData.password.length < 8) { setLoginError("Password must be at least 8 characters."); return; }
+      setLoginLoading(true); setLoginError("");
+      try {
+        const data = await AuthAPI.register(regData.firmName, regData.firstName, regData.lastName, regData.email, regData.password);
+        setCurrentUser(data.user);
+        setCurrentFirm(data.firm);
+        setView("attorney");
+        setActivePage("dashboard");
+      } catch (err) {
+        setLoginError(err.message || "Failed to create account. Please try again.");
       }
       setLoginLoading(false);
     };
@@ -1112,9 +1265,10 @@ export default function CounselBridge() {
         <div style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(circle at 20% 80%, rgba(37,99,235,0.15) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(13,148,136,0.1) 0%, transparent 50%)", pointerEvents: "none" }} />
         <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "1px", background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)" }} />
 
-        <div className="fade-in" style={{ width: "100%", maxWidth: 420 }}>
-          <div style={{ textAlign: "center", marginBottom: 36 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 10 }}>
+        <div className="fade-in" style={{ width: "100%", maxWidth: authMode === "signup" ? 500 : 420 }}>
+          {/* Logo */}
+          <div style={{ textAlign: "center", marginBottom: 32 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 8 }}>
               <div style={{ width: 42, height: 42, background: "var(--blue)", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <Icon name="shield" size={22} color="white" />
               </div>
@@ -1123,20 +1277,23 @@ export default function CounselBridge() {
             <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 13.5 }}>Secure Legal Communication Platform</p>
           </div>
 
-          <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: "var(--radius-md)", padding: 4, display: "flex", marginBottom: 24, border: "1px solid rgba(255,255,255,0.1)" }}>
-            {["attorney", "client"].map(t => (
-              <button key={t} onClick={() => { setLoginType(t); setLoginError(""); }} style={{ flex: 1, padding: "9px 0", borderRadius: "var(--radius-sm)", background: loginType === t ? "var(--white)" : "transparent", color: loginType === t ? "var(--navy)" : "rgba(255,255,255,0.6)", fontWeight: 600, fontSize: 13.5, cursor: "pointer", border: "none", transition: "all var(--transition)", fontFamily: "var(--font-sans)" }}>
-                {t === "attorney" ? "⚖️  Attorney / Staff" : "👤  Client"}
-              </button>
-            ))}
-          </div>
+          {/* Attorney / Client toggle — only show on login */}
+          {authMode === "login" && (
+            <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: "var(--radius-md)", padding: 4, display: "flex", marginBottom: 20, border: "1px solid rgba(255,255,255,0.1)" }}>
+              {["attorney", "client"].map(t => (
+                <button key={t} onClick={() => { setLoginType(t); setLoginError(""); }} style={{ flex: 1, padding: "9px 0", borderRadius: "var(--radius-sm)", background: loginType === t ? "var(--white)" : "transparent", color: loginType === t ? "var(--navy)" : "rgba(255,255,255,0.6)", fontWeight: 600, fontSize: 13.5, cursor: "pointer", border: "none", transition: "all var(--transition)", fontFamily: "var(--font-sans)" }}>
+                  {t === "attorney" ? "⚖️  Attorney / Staff" : "👤  Client"}
+                </button>
+              ))}
+            </div>
+          )}
 
           <div style={{ background: "rgba(255,255,255,0.97)", borderRadius: "var(--radius-xl)", padding: "32px 28px", boxShadow: "var(--shadow-xl)" }}>
-            <h2 style={{ fontFamily: "var(--font-serif)", fontSize: 22, color: "var(--navy)", marginBottom: 6 }}>
-              {loginType === "attorney" ? "Welcome back" : "Your secure portal"}
+            <h2 style={{ fontFamily: "var(--font-serif)", fontSize: 22, color: "var(--navy)", marginBottom: 4 }}>
+              {authMode === "signup" ? "Create your firm account" : loginType === "attorney" ? "Welcome back" : "Your secure portal"}
             </h2>
-            <p style={{ fontSize: 13.5, color: "var(--gray-500)", marginBottom: 24 }}>
-              {loginType === "attorney" ? "Sign in to your firm workspace" : "Access your case information securely"}
+            <p style={{ fontSize: 13.5, color: "var(--gray-500)", marginBottom: 20 }}>
+              {authMode === "signup" ? "Get started with a 14-day free trial — no credit card required." : loginType === "attorney" ? "Sign in to your firm workspace" : "Access your case information securely"}
             </p>
 
             {loginError && (
@@ -1145,29 +1302,57 @@ export default function CounselBridge() {
               </div>
             )}
 
-            <div style={{ marginBottom: 14 }}>
-              <label>Email address</label>
-              <input className="input" type="email" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} placeholder="you@example.com" onKeyDown={e => e.key === "Enter" && handleLogin()} />
-            </div>
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
-                <label style={{ marginBottom: 0 }}>Password</label>
-              </div>
-              <input className="input" type="password" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} placeholder="••••••••" onKeyDown={e => e.key === "Enter" && handleLogin()} />
-            </div>
-            <button className="btn btn-primary" disabled={loginLoading} style={{ width: "100%", justifyContent: "center", padding: "11px 0", fontSize: 15, borderRadius: "var(--radius-md)" }} onClick={handleLogin}>
-              {loginLoading ? "Signing in..." : <> Sign In Securely <Icon name="arrow_right" size={16} /></>}
-            </button>
-            {loginType === "client" && (
-              <>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "16px 0" }}>
-                  <div style={{ flex: 1, height: 1, background: "var(--gray-200)" }} />
-                  <span style={{ fontSize: 12, color: "var(--gray-400)" }}>or</span>
-                  <div style={{ flex: 1, height: 1, background: "var(--gray-200)" }} />
+            {authMode === "signup" ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 13 }}>
+                <div><label>Firm Name *</label><input className="input" placeholder="Rivera & Associates" value={regData.firmName} onChange={e => setReg("firmName", e.target.value)} /></div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  <div><label>First Name *</label><input className="input" placeholder="Alex" value={regData.firstName} onChange={e => setReg("firstName", e.target.value)} /></div>
+                  <div><label>Last Name</label><input className="input" placeholder="Rivera" value={regData.lastName} onChange={e => setReg("lastName", e.target.value)} /></div>
                 </div>
-                <button className="btn btn-secondary" style={{ width: "100%", justifyContent: "center", borderRadius: "var(--radius-md)" }} onClick={handleMagicLink}>
-                  <Icon name="mail" size={15} /> Send me a magic link
+                <div><label>Email Address *</label><input className="input" type="email" placeholder="alex@yourfirm.com" value={regData.email} onChange={e => setReg("email", e.target.value)} /></div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  <div><label>Password *</label><input className="input" type="password" placeholder="Min. 8 characters" value={regData.password} onChange={e => setReg("password", e.target.value)} /></div>
+                  <div><label>Confirm Password *</label><input className="input" type="password" placeholder="Repeat password" value={regData.confirmPassword} onChange={e => setReg("confirmPassword", e.target.value)} onKeyDown={e => e.key === "Enter" && handleSignup()} /></div>
+                </div>
+                <button className="btn btn-primary" disabled={loginLoading} style={{ width: "100%", justifyContent: "center", padding: "11px 0", fontSize: 15, borderRadius: "var(--radius-md)", marginTop: 4 }} onClick={handleSignup}>
+                  {loginLoading ? "Creating account..." : <> Create Account <Icon name="arrow_right" size={16} /></>}
                 </button>
+                <p style={{ textAlign: "center", fontSize: 13, color: "var(--gray-500)", marginTop: 4 }}>
+                  Already have an account?{" "}
+                  <span style={{ color: "var(--blue)", cursor: "pointer", fontWeight: 600 }} onClick={() => { setAuthMode("login"); setLoginError(""); }}>Sign in</span>
+                </p>
+              </div>
+            ) : (
+              <>
+                <div style={{ marginBottom: 14 }}>
+                  <label>Email address</label>
+                  <input className="input" type="email" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} placeholder="you@example.com" onKeyDown={e => e.key === "Enter" && handleLogin()} />
+                </div>
+                <div style={{ marginBottom: 20 }}>
+                  <label>Password</label>
+                  <input className="input" type="password" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} placeholder="••••••••" onKeyDown={e => e.key === "Enter" && handleLogin()} />
+                </div>
+                <button className="btn btn-primary" disabled={loginLoading} style={{ width: "100%", justifyContent: "center", padding: "11px 0", fontSize: 15, borderRadius: "var(--radius-md)" }} onClick={handleLogin}>
+                  {loginLoading ? "Signing in..." : <> Sign In Securely <Icon name="arrow_right" size={16} /></>}
+                </button>
+                {loginType === "client" && (
+                  <>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "16px 0" }}>
+                      <div style={{ flex: 1, height: 1, background: "var(--gray-200)" }} />
+                      <span style={{ fontSize: 12, color: "var(--gray-400)" }}>or</span>
+                      <div style={{ flex: 1, height: 1, background: "var(--gray-200)" }} />
+                    </div>
+                    <button className="btn btn-secondary" style={{ width: "100%", justifyContent: "center", borderRadius: "var(--radius-md)" }} onClick={handleMagicLink}>
+                      <Icon name="mail" size={15} /> Send me a magic link
+                    </button>
+                  </>
+                )}
+                {loginType === "attorney" && (
+                  <p style={{ textAlign: "center", fontSize: 13, color: "var(--gray-500)", marginTop: 16 }}>
+                    New to CounselBridge?{" "}
+                    <span style={{ color: "var(--blue)", cursor: "pointer", fontWeight: 600 }} onClick={() => { setAuthMode("signup"); setLoginError(""); }}>Create a firm account</span>
+                  </p>
+                )}
               </>
             )}
           </div>
@@ -1187,7 +1372,7 @@ export default function CounselBridge() {
     );
   }
 
-    // ─── CLIENT PORTAL ─────────────────────────────────────────────────────────
+      // ─── CLIENT PORTAL ─────────────────────────────────────────────────────────
   if (view === "client") {
     const matter = clientMatter;
     const docReqs = clientMatter?.docRequests || [];
@@ -1858,32 +2043,11 @@ export default function CounselBridge() {
       )}
 
       {/* New Matter Modal */}
+      {showUploadModal && <DocumentUploadModal matters={matters} onClose={() => setShowUploadModal(false)} onUploaded={(docs) => { setMatters(prev => prev.map(m => m.id === docs[0]?.matterId ? { ...m, documents: [...(m.documents||[]), ...docs] } : m)); setShowUploadModal(false); }} />}
       {showNewMatterModal && <NewMatterModal onClose={() => setShowNewMatterModal(false)} onCreated={(matter) => { setMatters(prev => [...prev, normalizeMatter(matter)]); setShowNewMatterModal(false); setActivePage("matters"); }} currentUser={currentUser} />}
 
       {/* Invoice Modal */}
-      {showInvoiceModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(15,34,64,0.6)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }} onClick={() => setShowInvoiceModal(false)}>
-          <div className="card fade-in" style={{ width: 480, padding: 28 }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              <h3 style={{ fontSize: 17, fontWeight: 700, color: "var(--navy)" }}>Create Invoice</h3>
-              <button className="btn btn-ghost btn-sm" onClick={() => setShowInvoiceModal(false)}><Icon name="x" size={16} /></button>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <div><label>Matter</label><select className="input select"><option>Johnson Divorce Proceeding</option></select></div>
-              <div><label>Description</label><input className="input" defaultValue="Legal services — March 2024" /></div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div><label>Amount</label><input className="input" defaultValue="1,800.00" /></div>
-                <div><label>Due Date</label><input className="input" type="date" defaultValue="2024-04-01" /></div>
-              </div>
-              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 4 }}>
-                <button className="btn btn-secondary" onClick={() => setShowInvoiceModal(false)}>Cancel</button>
-                <button className="btn btn-secondary">Save Draft</button>
-                <button className="btn btn-primary" onClick={() => setShowInvoiceModal(false)}><Icon name="send" size={14} />Send to Client</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {showInvoiceModal && <InvoiceModal matters={matters} onClose={() => setShowInvoiceModal(false)} onCreated={(inv) => { setInvoices(prev => [...prev, ...normalizeInvoices([inv])]); setShowInvoiceModal(false); }} />}
 
       {/* SIDEBAR */}
       <div style={{ width: 224, background: "linear-gradient(180deg, var(--navy) 0%, #162d4a 100%)", display: "flex", flexDirection: "column", padding: "0 10px 16px", flexShrink: 0 }}>
@@ -1957,8 +2121,8 @@ export default function CounselBridge() {
             <div className="scroll-y" style={{ flex: 1, padding: 24 }} >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
                 <div>
-                  <h1 style={{ fontFamily: "var(--font-serif)", fontSize: 24, color: "var(--navy)", marginBottom: 2 }}>Good morning, Alex</h1>
-                  <p style={{ fontSize: 13.5, color: "var(--gray-500)" }}>Tuesday, March 3, 2026 · {matters.filter(m => m.status === "active").length} active matters</p>
+                  <h1 style={{ fontFamily: "var(--font-serif)", fontSize: 24, color: "var(--navy)", marginBottom: 2 }}>Good morning, {currentUser?.firstName || "there"}</h1>
+                  <p style={{ fontSize: 13.5, color: "var(--gray-500)" }}>{new Date().toLocaleDateString("en-US", {weekday:"long",month:"long",day:"numeric",year:"numeric"})} · {matters.filter(m => m.status === "active").length} active matters</p>
                 </div>
                 <button className="btn btn-primary" onClick={() => setShowNewMatterModal(true)}><Icon name="plus" size={15} />New Matter</button>
               </div>
@@ -1966,9 +2130,9 @@ export default function CounselBridge() {
               {/* KPI row */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 20 }}>
                 {[
-                  { label: "Active Matters", value: matters.filter(m => m.status === "active").length, icon: "briefcase", color: "blue", sub: "+2 this week" },
-                  { label: "Unread Messages", value: matters.reduce((s,m) => s + m.unread, 0), icon: "message", color: "teal", sub: "Across 3 matters" },
-                  { label: "Pending Invoices", value: "$" + invoices.filter(i => i.status !== "paid").reduce((s,i) => s+i.amount,0).toLocaleString(), icon: "dollar", color: "amber", sub: "2 overdue" },
+                  { label: "Active Matters", value: matters.filter(m => m.status === "active").length, icon: "briefcase", color: "blue", sub: `${matters.length} total` },
+                  { label: "Unread Messages", value: matters.reduce((s,m) => s + (m.unread||0), 0), icon: "message", color: "teal", sub: `Across ${matters.filter(m=>m.unread>0).length} matters` },
+                  { label: "Pending Invoices", value: "$" + invoices.filter(i => i.status !== "paid").reduce((s,i) => s+i.amount,0).toLocaleString(), icon: "dollar", color: "amber", sub: `${invoices.filter(i=>i.status==="overdue").length} overdue` },
                   { label: "AI Queue", value: aiQueue.length, icon: "cpu", color: "purple", sub: "Needs your approval" },
                 ].map(k => (
                   <div key={k.label} className="card" style={{ padding: "16px 18px", cursor: "pointer" }} onClick={() => { if(k.label === "AI Queue") setActivePage("ai-queue"); }}>
@@ -1993,12 +2157,20 @@ export default function CounselBridge() {
                         <span className="ai-badge"><Icon name="cpu" size={11} color="var(--purple)" />Daily Digest</span>
                         <span style={{ fontSize: 12, color: "var(--gray-500)" }}>Generated by AI · 7:00 AM</span>
                       </div>
-                      <button className="btn btn-ghost btn-sm" onClick={() => setDigestExpanded(!digestExpanded)}>
+                      <button className="btn btn-ghost btn-sm" onClick={async () => {
+                        setDigestExpanded(!digestExpanded);
+                        if (!digestText && !digestExpanded) {
+                          try {
+                            const res = await AIAPI.dailyDigest();
+                            setDigestText(res?.digest || "No digest available.");
+                          } catch { setDigestText("Unable to load digest. Please try again."); }
+                        }
+                      }}>
                         <Icon name={digestExpanded ? "chevron_down" : "chevron_right"} size={14} />
                       </button>
                     </div>
                     <div style={{ fontSize: 14, color: "var(--gray-700)", lineHeight: 1.7, whiteSpace: "pre-line" }}>
-                      {digestExpanded ? (digestText || "Loading your daily digest...") : (digestText || "").split("\n")[0] || "Click to load your AI daily digest"}
+                      {digestExpanded ? (digestText || "Loading your daily digest...") : (digestText || "").split("\n")[0] || "Click 'Expand' to generate your AI daily briefing"}
                       {!digestExpanded && <span style={{ color: "var(--blue)", cursor: "pointer", fontSize: 13 }} onClick={() => setDigestExpanded(true)}> · See full digest</span>}
                     </div>
                   </div>
@@ -2242,7 +2414,9 @@ export default function CounselBridge() {
                   </div>
 
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    {INVOICES.map(inv => {
+                    {invoices.length === 0 ? (
+                      <div className="empty-state"><Icon name="dollar" size={32} /><p>No invoices yet. Create your first invoice above.</p></div>
+                    ) : invoices.map(inv => {
                       const matter = matters.find(m => m.id === inv.matterId);
                       return (
                         <div key={inv.id} className="card" style={{ padding: "14px 20px", display: "flex", alignItems: "center", gap: 14 }}>
@@ -2254,7 +2428,7 @@ export default function CounselBridge() {
                             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                               <span style={{ fontSize: 12.5, color: "var(--gray-400)" }}>{inv.number}</span>
                               <span style={{ color: "var(--gray-300)" }}>·</span>
-                              <span style={{ fontSize: 12.5, color: "var(--gray-500)" }}>{matter?.client}</span>
+                              <span style={{ fontSize: 12.5, color: "var(--gray-500)" }}>{matter?.client || "—"}</span>
                               <span style={{ color: "var(--gray-300)" }}>·</span>
                               <span style={{ fontSize: 12.5, color: "var(--gray-400)" }}>Due {inv.due}</span>
                               {inv.status === "overdue" && <span style={{ fontSize: 12, color: "var(--red)", fontWeight: 600 }}>OVERDUE</span>}
@@ -2263,7 +2437,7 @@ export default function CounselBridge() {
                           <div style={{ fontSize: 18, fontWeight: 700, color: "var(--gray-900)" }}>${inv.amount.toLocaleString()}</div>
                           <StatusBadge status={inv.status} />
                           <div style={{ display: "flex", gap: 6 }}>
-                            {inv.status !== "paid" && <button className="btn btn-secondary btn-sm"><Icon name="send" size={12} />Remind</button>}
+                            {inv.status !== "paid" && <button className="btn btn-secondary btn-sm" onClick={() => InvoicesAPI.remind(inv.id).catch(console.error)}><Icon name="send" size={12} />Remind</button>}
                             <button className="btn btn-ghost btn-sm"><Icon name="eye" size={13} /></button>
                           </div>
                         </div>
@@ -2328,7 +2502,7 @@ export default function CounselBridge() {
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button className="btn btn-secondary btn-sm"><Icon name="file" size={13} />Request Documents</button>
-                  <button className="btn btn-primary"><Icon name="upload" size={15} />Upload</button>
+                  <button className="btn btn-primary" onClick={() => setShowUploadModal(true)}><Icon name="upload" size={15} />Upload</button>
                 </div>
               </div>
 
@@ -2337,11 +2511,8 @@ export default function CounselBridge() {
                 <div>
                   <div style={{ fontSize: 12, fontWeight: 700, color: "var(--gray-400)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, padding: "0 4px" }}>Matters</div>
                   {[
-                    { label: "All Documents", count: 12, icon: "layers" },
-                    { label: "Johnson Divorce", count: 5, icon: "folder" },
-                    { label: "Martinez Estate", count: 3, icon: "folder" },
-                    { label: "Chen v. Realty", count: 4, icon: "folder" },
-                    { label: "Rodriguez Injury", count: 0, icon: "folder" },
+                    { label: "All Documents", count: matters.reduce((s,m)=>(m.documents||[]).length+s,0), icon: "layers" },
+                    ...matters.map(m => ({ label: m.title, count: (m.documents||[]).length, icon: "folder" }))
                   ].map((folder, i) => (
                     <div key={folder.label} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: "var(--radius-sm)", cursor: "pointer", background: i === 0 ? "var(--blue-pale)" : "transparent", marginBottom: 2 }}
                       onMouseEnter={e => { if(i !== 0) e.currentTarget.style.background = "var(--gray-100)"; }}
@@ -2398,13 +2569,7 @@ export default function CounselBridge() {
                     <button className="btn btn-sm" style={{ background: "var(--amber)", color: "white", fontSize: 11.5, marginLeft: "auto" }}>View Requests</button>
                   </div>
 
-                  {[
-                    ...Object.values(DOCUMENTS).flat(),
-                    { id: 10, name: "Martinez_Trust_v2.docx", type: "Contract", size: "0.2 MB", uploaded: "Mar 8", by: "Alex Rivera", aiLabel: "Legal Agreement", confidence: 0.94, shared: false },
-                    { id: 11, name: "Chen_Evidence_Photos.zip", type: "Evidence", size: "14.2 MB", uploaded: "Mar 6", by: "Alex Rivera", aiLabel: "Evidence", confidence: 0.87, shared: false },
-                    { id: 12, name: "Rodriguez_Medical_Records.pdf", type: "Medical", size: "3.8 MB", uploaded: "Mar 9", by: "Priya Patel", aiLabel: "Medical Record", confidence: 0.99, shared: false },
-                    { id: 13, name: "Johnson_Settlement_Proposal.pdf", type: "Internal", size: "0.6 MB", uploaded: "Feb 29", by: "Alex Rivera", aiLabel: "Settlement Document", confidence: 0.91, shared: false },
-                  ].map((doc, i) => (
+                  {(matters.flatMap(m => m.documents || []).length === 0 ? [] : matters.flatMap(m => (m.documents || []).map(d => ({ ...d, matterTitle: m.title })))).map((doc, i) => (
                     <div key={doc.id + "-" + i} className="card card-hover" style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
                       <div style={{ width: 40, height: 40, background: doc.aiLabel === "Financial Statement" || doc.aiLabel === "Tax Document" ? "var(--green-pale)" : doc.aiLabel === "Court Filing" ? "var(--red-pale)" : doc.aiLabel === "Medical Record" ? "var(--purple-pale)" : "var(--blue-pale)", borderRadius: "var(--radius-sm)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                         <Icon name="file" size={17} color={doc.aiLabel === "Financial Statement" || doc.aiLabel === "Tax Document" ? "var(--green)" : doc.aiLabel === "Court Filing" ? "var(--red)" : doc.aiLabel === "Medical Record" ? "var(--purple)" : "var(--blue)"} />
@@ -2482,24 +2647,22 @@ export default function CounselBridge() {
                 ))}
               </div>
 
-              {/* Earlier section */}
+              {/* All messages section */}
               <div style={{ marginBottom: 8 }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--gray-400)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Earlier today</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--gray-400)", textTransform: "uppercase", letterSpacing: "0.06em" }}>All Messages</span>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                {[
-                  { name: "Carlos Martinez", matter: "Martinez Estate Planning", body: "I've reviewed the trust document — looks great. When do we sign?", time: "8:02 AM", practice: "Estate Planning" },
-                  { name: "Priya Patel", matter: "Chen v. Realty Group", body: "Internal: Filed the exhibit list. Motion in limine draft ready for your review.", time: "7:48 AM", practice: "Litigation", internal: true },
-                  { name: "Ji-soo Park", matter: "Park Business Acquisition", body: "Hi, I submitted a new inquiry — wanted to follow up on timing for the initial consultation.", time: "7:15 AM", practice: "Corporate" },
-                ].map((msg, i) => (
+                {matters.flatMap(m => (messages[m.id] || []).filter(msg => msg.read).map(msg => ({ ...msg, matter: m }))).length === 0 ? (
+                  <div className="empty-state"><Icon name="message" size={32} /><p>No messages yet. Messages will appear here once clients start communicating.</p></div>
+                ) : matters.flatMap(m => (messages[m.id] || []).filter(msg => msg.read).map(msg => ({ ...msg, matter: m }))).map((msg, i) => (
                   <div key={i} className="card card-hover" style={{ padding: "14px 18px", display: "flex", gap: 12, alignItems: "center", borderLeft: msg.internal ? "3px solid var(--amber)" : "3px solid var(--gray-200)" }}
-                    onClick={() => { const m = matters.find(x => x.title === msg.matter); if(m){ setSelectedMatter(m); setActivePage("matters"); setMatterTab("messages"); } }}>
+                    onClick={() => { setSelectedMatter(msg.matter); setActivePage("matters"); setMatterTab("messages"); }}>
                     <Avatar name={msg.name} size={40} color={msg.internal ? "amber" : "blue"} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
                         <span style={{ fontSize: 13.5, fontWeight: 600, color: "var(--gray-800)" }}>{msg.name}</span>
                         <span style={{ color: "var(--gray-300)" }}>·</span>
-                        <span style={{ fontSize: 13, color: "var(--gray-500)" }}>{msg.matter}</span>
+                        <span style={{ fontSize: 13, color: "var(--gray-500)" }}>{msg.matter?.title}</span>
                         {msg.internal && <span className="badge badge-amber" style={{ fontSize: 10 }}>Internal</span>}
                       </div>
                       <div style={{ fontSize: 13.5, color: "var(--gray-500)", display: "-webkit-box", WebkitLineClamp: 1, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{msg.body}</div>
@@ -2960,5 +3123,3 @@ export default function CounselBridge() {
     </div>
   );
 }
-
-              
