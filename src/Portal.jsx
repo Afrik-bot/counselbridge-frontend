@@ -437,17 +437,26 @@ const VideoCall = ({ contact, onClose, isClient }) => {
   // Start local camera
   const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: camOn, audio: micOn });
       localStreamRef.current = stream;
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream;
-      }
+      // Retry attaching stream to video element with small delay
+      const attachStream = () => {
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = stream;
+          localVideoRef.current.play().catch(() => {});
+        } else {
+          setTimeout(attachStream, 100);
+        }
+      };
+      attachStream();
       return stream;
     } catch (err) {
       if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
         setPermError("Camera/microphone access was denied. Please allow access in your browser and try again.");
       } else if (err.name === "NotFoundError") {
         setPermError("No camera or microphone found on this device.");
+      } else if (err.name === "NotReadableError") {
+        setPermError("Camera is already in use by another application. Please close it and try again.");
       } else {
         setPermError("Could not access camera: " + err.message);
       }
@@ -2958,7 +2967,7 @@ export default function CounselBridge() {
                   <div className="card" style={{ padding: 24 }}>
                     <div style={{ fontSize: 15, fontWeight: 700, color: "var(--gray-900)", marginBottom: 18 }}>Firm Profile</div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
-                      <div><label>Firm Name</label><input className="input" defaultValue={currentFirm?.name || "Your Firm"} /></div>
+                      <div><label>Firm Name</label><input className="input" defaultValue="{currentFirm?.name || "Your Firm"}" /></div>
                       <div><label>Portal URL</label><input className="input" defaultValue="rivera.counselbridge.io" /></div>
                       <div><label>Practice Area(s)</label><input className="input" defaultValue="Family Law, Litigation, Estate Planning, Corporate" /></div>
                       <div><label>Firm Phone</label><input className="input" defaultValue="(415) 555-0182" /></div>
