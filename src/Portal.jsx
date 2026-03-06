@@ -565,6 +565,14 @@ const VideoCall = ({ contact, onClose, isClient }) => {
     };
   }, []);
 
+  // Re-attach stream to video element whenever callState becomes active
+  useEffect(() => {
+    if (callState === "active" && localStreamRef.current && localVideoRef.current) {
+      localVideoRef.current.srcObject = localStreamRef.current;
+      localVideoRef.current.play().catch(() => {});
+    }
+  }, [callState]);
+
   const fmt = (s) => {
     const m = Math.floor(s / 60);
     const sec = s % 60;
