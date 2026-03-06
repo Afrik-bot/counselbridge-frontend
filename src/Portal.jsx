@@ -1044,7 +1044,7 @@ const NewMatterModal = ({ onClose, onCreated, currentUser }) => {
 };
 
 // ─── MATTER DETAIL ─────────────────────────────────────────────────────────
-const MatterDetail = ({ matter, messages, showInternal, setShowInternal, invoices, setVideoCallContact, setShowVideoCall, currentUser, setShowInvoiceModal, setSelectedMatter, matterTab, setMatterTab, aiDraft, setAiDraft, newMsg, setNewMsg, generateAIDraft, sendMessage, aiTyping, setShowAIModal, setShowUploadModal }) => {
+const MatterDetail = ({ matter, messages, showInternal, setShowInternal, invoices, setVideoCallContact, setShowVideoCall, currentUser, setShowInvoiceModal, setSelectedMatter, matterTab, setMatterTab, aiDraft, setAiDraft, newMsg, setNewMsg, generateAIDraft, sendMessage, aiTyping, setShowAIModal, setShowUploadModal, msgEndRef }) => {
   const matterMsgs = (messages[matter.id] || []);
   const visibleMsgs = showInternal ? matterMsgs : matterMsgs.filter(m => !m.internal);
   const docs = matter?.documents || [];
@@ -2135,7 +2135,7 @@ export default function CounselBridge() {
         <div className="scroll-y" style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
           {/* MATTER DETAIL */}
           {selectedMatter && activePage === "matters" && (
-            <MatterDetail matter={selectedMatter} messages={messages} showInternal={showInternal} setShowInternal={setShowInternal} invoices={invoices} setVideoCallContact={setVideoCallContact} setShowVideoCall={setShowVideoCall} currentUser={currentUser} setShowInvoiceModal={setShowInvoiceModal} setSelectedMatter={setSelectedMatter} matterTab={matterTab} setMatterTab={setMatterTab} aiDraft={aiDraft} setAiDraft={setAiDraft} newMsg={newMsg} setNewMsg={setNewMsg} generateAIDraft={generateAIDraft} sendMessage={sendMessage} aiTyping={aiTyping} setShowAIModal={setShowAIModal} setShowUploadModal={setShowUploadModal} />
+            <MatterDetail matter={selectedMatter} messages={messages} showInternal={showInternal} setShowInternal={setShowInternal} invoices={invoices} setVideoCallContact={setVideoCallContact} setShowVideoCall={setShowVideoCall} currentUser={currentUser} setShowInvoiceModal={setShowInvoiceModal} setSelectedMatter={setSelectedMatter} matterTab={matterTab} setMatterTab={setMatterTab} aiDraft={aiDraft} setAiDraft={setAiDraft} newMsg={newMsg} setNewMsg={setNewMsg} generateAIDraft={generateAIDraft} sendMessage={sendMessage} aiTyping={aiTyping} setShowAIModal={setShowAIModal} setShowUploadModal={setShowUploadModal} msgEndRef={msgEndRef} />
           )}
 
           {/* DASHBOARD */}
