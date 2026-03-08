@@ -2251,7 +2251,7 @@ export default function CounselBridge() {
                   <div className="card" style={{ padding: 18 }}>
                     <div style={{ fontSize: 14, fontWeight: 600, color: "var(--gray-800)", marginBottom: 12 }}>Upcoming</div>
                     {[
-                      { label: `Video Call — ${matters[0]?.client || "Client"}`, date: "Today 2:00 PM", icon: "video", color: "blue", onClick: () => { setVideoCallContact({ name: selectedMatter?.client || "Client", matter: "Johnson Divorce Proceeding", myName: currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "You" }); setShowVideoCall(true); } },
+                      { label: `Video Call — ${matters[0]?.client || "Client"}`, date: "Today 2:00 PM", icon: "video", color: "blue", onClick: () => { setVideoCallContact({ name: "Client", matter: "Johnson Divorce Proceeding", myName: currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "You" }); setShowVideoCall(true); } },
                       { label: "Court Date — Amy Chen", date: "Apr 3, 9:00 AM", icon: "briefcase", color: "red" },
                       { label: "Document deadline — Johnson", date: "Mar 15", icon: "clock", color: "amber" },
                     ].map((ev, i) => (
