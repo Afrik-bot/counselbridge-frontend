@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+// CounselBridge Portal v2.1 � Stripe Elements integrated
 
 // ─── DESIGN SYSTEM ────────────────────────────────────────────────────────────
 const css = `
