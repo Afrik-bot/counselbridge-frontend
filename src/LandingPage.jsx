@@ -80,6 +80,8 @@ const css = `
     align-items: center;
     justify-content: center;
     font-size: 18px;
+    color: white;
+    font-family: 'Segoe UI Symbol', 'Apple Symbols', sans-serif;
   }
 
   .nav-logo-text {
@@ -754,7 +756,7 @@ export default function LandingPage() {
       {/* NAV */}
       <nav className={scrolled ? "scrolled" : ""}>
         <a href="#" className="nav-logo">
-          <div className="nav-logo-icon">⚖</div>
+          <div className="nav-logo-icon">⚖︎</div>
           <span className="nav-logo-text">CounselBridge</span>
         </a>
         <ul className="nav-links">
@@ -902,7 +904,7 @@ export default function LandingPage() {
       <footer>
         <div className="footer-inner">
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div className="nav-logo-icon" style={{ width: 28, height: 28, fontSize: 14 }}>⚖</div>
+            <div className="nav-logo-icon" style={{ width: 28, height: 28, fontSize: 14 }}>⚖︎</div>
             <span style={{ fontFamily: "var(--serif)", fontSize: 18, color: "rgba(255,255,255,0.7)" }}>CounselBridge</span>
           </div>
           <div className="footer-copy">&copy; {new Date().getFullYear()} CounselBridge &middot; counselbridge.me</div>
