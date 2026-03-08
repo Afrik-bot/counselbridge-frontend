@@ -1728,7 +1728,7 @@ export default function CounselBridge() {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ fontSize: 13.5, color: "var(--gray-600)" }}>{matters[0]?.client || "Your Client"}</span>
-           <Avatar name={selectedMatter?.client || "Client"} size={32} color="teal" />
+           <Avatar name="Client" size={32} color="teal" />
             <button className="btn btn-ghost btn-sm" onClick={() => setView("login")}><Icon name="log-out" size={15} /></button>
           </div>
         </div>
@@ -1856,7 +1856,7 @@ export default function CounselBridge() {
                 </div>
                 <div style={{ padding: "12px 14px", borderTop: "1px solid var(--gray-200)", display: "flex", gap: 8 }}>
                   <input className="input" style={{ flex: 1 }} placeholder="Message your attorney..." value={newMsg} onChange={e => setNewMsg(e.target.value)} onKeyDown={e => { if(e.key==="Enter"&&newMsg.trim()){ const updated={...messages}; if(!updated[1])updated[1]=[]; updated[1]=[...updated[1],{id:Date.now(),sender:"client",name:selectedMatter?.client || "Client",body:newMsg,time:"Just now",read:false,internal:false}]; setMessages(updated); setNewMsg(""); } }} />
-                  <button className="btn btn-primary btn-sm" onClick={() => { if(!newMsg.trim())return; const updated={...messages}; if(!updated[1])updated[1]=[]; updated[1]=[...updated[1],{id:Date.now(),sender:"client",name:selectedMatter?.client || "Client",body:newMsg,time:"Just now",read:false,internal:false}]; setMessages(updated); setNewMsg(""); }}><Icon name="send" size={14} /></button>
+                  <button className="btn btn-primary btn-sm" onClick={() => { if(!newMsg.trim())return; const updated={...messages}; if(!updated[1])updated[1]=[]; updated[1]=[...updated[1],{id:Date.now(),sender:"client",name:"Client",body:newMsg,time:"Just now",read:false,internal:false}]; setMessages(updated); setNewMsg(""); }}><Icon name="send" size={14} /></button>
                 </div>
               </div>
             </div>
