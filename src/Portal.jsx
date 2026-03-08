@@ -809,8 +809,6 @@ const VideoCall = ({ contact, onClose, isClient }) => {
 export default function CounselBridge() {
   const [view, setView] = useState("login"); // login | attorney | client
   const [loginType, setLoginType] = useState("attorney");
-const [currentFirm] = useState({ name: "Rivera & Associates" });
-const [currentUser] = useState({ name: "Alex Rivera", role: "Attorney", plan: "Pro" });
   const [activePage, setActivePage] = useState("dashboard");
   const [selectedMatter, setSelectedMatter] = useState(null);
   const [matterTab, setMatterTab] = useState("overview");
@@ -2821,4 +2819,3 @@ const [currentUser] = useState({ name: "Alex Rivera", role: "Attorney", plan: "P
     </div>
   );
 }
-
