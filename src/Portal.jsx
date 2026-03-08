@@ -1,5 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { AuthAPI, MattersAPI, MessagesAPI, DocumentsAPI, InvoicesAPI, AIAPI, TokenStore, normalizeMatter, normalizeMessages, normalizeInvoices, normalizeAIQueue } from "./useAPI.js";
+import { useState, useEffect, useRef } from "react";
 
 // ─── DESIGN SYSTEM ────────────────────────────────────────────────────────────
 const css = `
@@ -246,30 +245,38 @@ const Icon = ({ name, size = 16, color = "currentColor", className = "" }) => {
   );
 };
 
+// ─── MOCK DATA ────────────────────────────────────────────────────────────────
+const MATTERS = [
+  { id: 1, ref: "CB-2024-0042", title: "Johnson Divorce Proceeding", client: "Sarah Johnson", clientEmail: "sarah.johnson@email.com", status: "active", practice: "Family Law", attorney: "Alex Rivera", unread: 3, daysOpen: 42, nextDeadline: "Mar 15 — Financial Documents", urgency: "high", retainer: 5000, paid: 2800, nextStep: "Upload the requested financial documents so your attorney can complete the asset disclosure filing.", nextStepInternal: "Chase missing bank statements; file 12/A by March 20 or we lose the date." },
+  { id: 2, ref: "CB-2024-0039", title: "Martinez Estate Planning", client: "Carlos Martinez", clientEmail: "c.martinez@email.com", status: "pending_client", practice: "Estate Planning", attorney: "Alex Rivera", unread: 0, daysOpen: 18, nextDeadline: "Mar 20 — Signature Needed", urgency: "medium", retainer: 3500, paid: 3500, nextStep: "Please sign the trust documents we sent. Everything is ready — we just need your signature.", nextStepInternal: "Docusign sent March 8. Follow up if not signed by March 14." },
+  { id: 3, ref: "CB-2024-0031", title: "Chen v. Realty Group", client: "Amy Chen", clientEmail: "amy.chen@email.com", status: "active", practice: "Litigation", attorney: "Alex Rivera", unread: 2, daysOpen: 67, nextDeadline: "Apr 3 — Court Date", urgency: "high", retainer: 12000, paid: 8200, nextStep: "Your court date is confirmed for April 3 at 9:00 AM in Courtroom 4. Please arrive 30 minutes early.", nextStepInternal: "Prepare deposition summary and exhibits. Motion in limine deadline March 28." },
+  { id: 4, ref: "CB-2024-0044", title: "Rodriguez Personal Injury", client: "Manuel Rodriguez", clientEmail: "m.rodriguez@email.com", status: "active", practice: "Personal Injury", attorney: "Alex Rivera", unread: 0, daysOpen: 12, nextDeadline: null, urgency: "low", retainer: 0, paid: 0, nextStep: "We are reviewing the medical records you provided. We will be in touch within 5 business days.", nextStepInternal: "Medical records received. Need to review and assess liability. Invoice overdue." },
+  { id: 5, ref: "CB-2024-0047", title: "Park Business Acquisition", client: "Ji-soo Park", clientEmail: "jisoo.park@email.com", status: "intake", practice: "Corporate", attorney: "Alex Rivera", unread: 1, daysOpen: 2, nextDeadline: null, urgency: "medium", retainer: 0, paid: 0, nextStep: "We have received your inquiry and will be in touch within 1 business day to discuss your matter.", nextStepInternal: "New inquiry — needs conflict check before opening. Practice area: M&A." },
+];
 
 const MESSAGES = {
   1: [
-    { id: 1, sender: "client", name: "Client", body: "Hi, just wanted to check in — is there any update on when the financial disclosure needs to be filed? I'm a bit worried about the deadline.", time: "9:14 AM", read: true, internal: false },
-    { id: 2, sender: "attorney", name: "Attorney", body: "Hi Sarah, yes — we have a deadline of March 20 to file. I need to receive your bank statements and last two years of tax returns before I can complete the form. I sent you a document request last week — were you able to find those?", time: "10:32 AM", read: true, internal: false, aiGenerated: false },
-    { id: 3, sender: "client", name: "Client", body: "Oh yes, I have them. I'll upload them tonight. Is there a specific format needed?", time: "11:05 AM", read: true, internal: false },
+    { id: 1, sender: "client", name: "Sarah Johnson", body: "Hi, just wanted to check in — is there any update on when the financial disclosure needs to be filed? I'm a bit worried about the deadline.", time: "9:14 AM", read: true, internal: false },
+    { id: 2, sender: "attorney", name: "Alex Rivera", body: "Hi Sarah, yes — we have a deadline of March 20 to file. I need to receive your bank statements and last two years of tax returns before I can complete the form. I sent you a document request last week — were you able to find those?", time: "10:32 AM", read: true, internal: false, aiGenerated: false },
+    { id: 3, sender: "client", name: "Sarah Johnson", body: "Oh yes, I have them. I'll upload them tonight. Is there a specific format needed?", time: "11:05 AM", read: true, internal: false },
     { id: 4, sender: "staff", name: "Priya Patel (Paralegal)", body: "Note: Sarah called at 2pm — confirmed she'll upload by end of day.", time: "2:18 PM", read: true, internal: true },
-    { id: 5, sender: "client", name: "Client", body: "I just tried to upload the bank statements but I'm getting an error. Can you help?", time: "8:47 PM", read: false, internal: false },
-    { id: 6, sender: "client", name: "Client", body: "Never mind — it worked! I uploaded everything. Please let me know if you need anything else.", time: "9:02 PM", read: false, internal: false },
+    { id: 5, sender: "client", name: "Sarah Johnson", body: "I just tried to upload the bank statements but I'm getting an error. Can you help?", time: "8:47 PM", read: false, internal: false },
+    { id: 6, sender: "client", name: "Sarah Johnson", body: "Never mind — it worked! I uploaded everything. Please let me know if you need anything else.", time: "9:02 PM", read: false, internal: false },
   ],
   3: [
     { id: 1, sender: "client", name: "Amy Chen", body: "Hello, I got a letter from opposing counsel today. It looks like they're requesting additional discovery. Is this normal?", time: "Yesterday, 3:22 PM", read: true, internal: false },
-    { id: 2, sender: "attorney", name: "Attorney" + "Attorney", body: "Hi Amy, yes — this is a standard part of the litigation process. I've reviewed the letter and will respond on your behalf. No action required from you at this time.", time: "Yesterday, 5:01 PM", read: true, internal: false, aiGenerated: true },
+    { id: 2, sender: "attorney", name: "Alex Rivera", body: "Hi Amy, yes — this is a standard part of the litigation process. I've reviewed the letter and will respond on your behalf. No action required from you at this time.", time: "Yesterday, 5:01 PM", read: true, internal: false, aiGenerated: true },
     { id: 3, sender: "client", name: "Amy Chen", body: "Thank you. I just want to make sure we're on track for April 3rd.", time: "Today, 8:30 AM", read: false, internal: false },
   ],
 };
 
 const DOCUMENTS = {
   1: [
-    { id: 1, name: "Bank Statements - Jan-Dec 2023.pdf", type: "Financial", size: "2.4 MB", uploaded: "Mar 10", by: "Client", aiLabel: "Financial Statement", confidence: 0.96, shared: true },
-    { id: 2, name: "Tax Return 2022.pdf", type: "Financial", size: "1.1 MB", uploaded: "Mar 10", by: "Client", aiLabel: "Tax Document", confidence: 0.98, shared: true },
-    { id: 3, name: "Tax Return 2023.pdf", type: "Financial", size: "1.3 MB", uploaded: "Mar 10", by: "Client", aiLabel: "Tax Document", confidence: 0.98, shared: true },
-    { id: 4, name: "Retainer Agreement - Johnson.pdf", type: "Contract", size: "0.4 MB", uploaded: "Feb 28", by: "Attorney", aiLabel: "Retainer Agreement", confidence: 0.99, shared: true },
-    { id: 5, name: "FL 150 Income Expense Declaration.docx", type: "Court Filing", size: "0.3 MB", uploaded: "Mar 5", by: "Attorney", aiLabel: "Court Filing", confidence: 0.91, shared: false },
+    { id: 1, name: "Bank Statements - Jan-Dec 2023.pdf", type: "Financial", size: "2.4 MB", uploaded: "Mar 10", by: "Sarah Johnson", aiLabel: "Financial Statement", confidence: 0.96, shared: true },
+    { id: 2, name: "Tax Return 2022.pdf", type: "Financial", size: "1.1 MB", uploaded: "Mar 10", by: "Sarah Johnson", aiLabel: "Tax Document", confidence: 0.98, shared: true },
+    { id: 3, name: "Tax Return 2023.pdf", type: "Financial", size: "1.3 MB", uploaded: "Mar 10", by: "Sarah Johnson", aiLabel: "Tax Document", confidence: 0.98, shared: true },
+    { id: 4, name: "Retainer Agreement - Johnson.pdf", type: "Contract", size: "0.4 MB", uploaded: "Feb 28", by: "Alex Rivera", aiLabel: "Retainer Agreement", confidence: 0.99, shared: true },
+    { id: 5, name: "FL 150 Income Expense Declaration.docx", type: "Court Filing", size: "0.3 MB", uploaded: "Mar 5", by: "Alex Rivera", aiLabel: "Court Filing", confidence: 0.91, shared: false },
   ],
 };
 
@@ -298,18 +305,18 @@ const TIMELINE = {
     { id: 3, date: "Mar 5", type: "document", icon: "file", color: "blue", text: "Document request sent to client: bank statements, tax returns, mortgage statement" },
     { id: 4, date: "Mar 1", type: "payment", icon: "dollar", color: "green", text: "Invoice INV-2024-001 paid — $2,800 received" },
     { id: 5, date: "Feb 28", type: "message", icon: "message", color: "gray", text: "Retainer agreement signed and executed" },
-    { id: 6, date: "Feb 27", type: "intake", icon: "users", color: "teal", text: "Matter opened — Client portal invitation sent to client" },
+    { id: 6, date: "Feb 27", type: "intake", icon: "users", color: "teal", text: "Matter opened — Client portal invitation sent to Sarah Johnson" },
   ],
 };
 
-const aiQueue = [
+const AI_QUEUE = [
   { id: 1, matterId: 1, matterTitle: "Johnson Divorce", agent: "PlainLanguageAgent", type: "Case Update", preview: "Your attorney has reviewed the financial documents you uploaded. The asset disclosure form is now being prepared and will be filed with the court before the March 20 deadline. No action is needed from you at this time.", generated: "10 min ago" },
   { id: 2, matterId: 3, matterTitle: "Chen v. Realty", agent: "MessageDraftAgent", type: "Message Draft", preview: "Hi Amy, your court date of April 3rd is confirmed and we are fully prepared. I'll send you a preparation guide this week covering what to expect on the day and how to present yourself effectively in court.", generated: "25 min ago" },
 ];
 
 const DIGEST_TEXT = `Good morning, Alex. Here's your briefing for today, Tuesday March 3rd.
 
-You have unread client messages across your active matters. Check the inbox to review and respond.
+You have **5 unread client messages** across 2 matters. Sarah Johnson (Johnson Divorce) sent 2 messages last night — she successfully uploaded her financial documents.
 
 **Attention needed:**
 • Johnson Divorce has 3 outstanding document requests (mortgage, retirement, business docs) — deadline in 12 days
@@ -429,26 +436,17 @@ const VideoCall = ({ contact, onClose, isClient }) => {
   // Start local camera
   const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: camOn, audio: micOn });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       localStreamRef.current = stream;
-      // Retry attaching stream to video element with small delay
-      const attachStream = () => {
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = stream;
-          localVideoRef.current.play().catch(() => {});
-        } else {
-          setTimeout(attachStream, 100);
-        }
-      };
-      attachStream();
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = stream;
+      }
       return stream;
     } catch (err) {
       if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
         setPermError("Camera/microphone access was denied. Please allow access in your browser and try again.");
       } else if (err.name === "NotFoundError") {
         setPermError("No camera or microphone found on this device.");
-      } else if (err.name === "NotReadableError") {
-        setPermError("Camera is already in use by another application. Please close it and try again.");
       } else {
         setPermError("Could not access camera: " + err.message);
       }
@@ -485,22 +483,24 @@ const VideoCall = ({ contact, onClose, isClient }) => {
     setShowSummary(true);
     setSummaryLoading(true);
     try {
-      const BASE = import.meta?.env?.VITE_API_URL || "https://api.counselbridge.me";
-      const { access } = { access: localStorage.getItem("cb_token") };
-      const resp = await fetch(`${BASE}/api/ai/meeting-summary`, {
+      const resp = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...(access ? { Authorization: `Bearer ${access}` } : {}) },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          attorneyName: contact?.myName || "the attorney",
-          clientName: contact?.name || "the client",
-          matter: contact?.matter || "their legal matter",
-          durationSeconds: duration
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1000,
+          system: "You are an AI legal assistant generating a meeting summary for an attorney. Be concise and professional. Format: 1 short paragraph summary, then a bulleted action items list.",
+          messages: [{
+            role: "user",
+            content: `Generate a brief meeting summary for a video consultation between attorney Alex Rivera and client ${contact?.name || "the client"} regarding ${contact?.matter || "their legal matter"}. The call lasted ${Math.floor(duration / 60)} minutes and ${duration % 60} seconds. Include 2-3 plausible action items based on a typical legal consultation.`
+          }]
         })
       });
       const data = await resp.json();
-      setSummaryText(data?.summary || "Meeting completed. Please add your notes manually.");
+      const text = data.content?.map(c => c.text || "").join("") || "Meeting completed. Please add your notes manually.";
+      setSummaryText(text);
     } catch {
-      setSummaryText("Meeting completed (" + fmt(duration) + "). Please add your notes manually.");
+      setSummaryText("Meeting completed (" + fmt(duration) + "). AI summary unavailable — please add notes manually.");
     }
     setSummaryLoading(false);
   };
@@ -554,14 +554,6 @@ const VideoCall = ({ contact, onClose, isClient }) => {
       stopCamera();
     };
   }, []);
-
-  // Re-attach stream to video element whenever callState becomes active
-  useEffect(() => {
-    if (callState === "active" && localStreamRef.current && localVideoRef.current) {
-      localVideoRef.current.srcObject = localStreamRef.current;
-      localVideoRef.current.play().catch(() => {});
-    }
-  }, [callState]);
 
   const fmt = (s) => {
     const m = Math.floor(s / 60);
@@ -685,11 +677,11 @@ const VideoCall = ({ contact, onClose, isClient }) => {
             <video ref={localVideoRef} autoPlay playsInline muted style={{ width: "100%", height: "100%", objectFit: "cover", transform: "scaleX(-1)" }} />
           ) : (
             <div style={{ width: "100%", height: "100%", background: "#1a2a40", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Avatar name={contact?.myName || "You"} size={44} color="blue" />
+              <Avatar name={isClient ? "Sarah Johnson" : "Alex Rivera"} size={44} color="blue" />
             </div>
           )}
           <div style={{ position: "absolute", bottom: 6, left: 8, fontSize: 11, color: "white", background: "rgba(0,0,0,0.5)", padding: "2px 6px", borderRadius: 4 }}>
-            {`You (${contact?.myName || "You"})`}
+            {isClient ? "You (Sarah)" : "You (Alex)"}
           </div>
           {!micOn && (
             <div style={{ position: "absolute", top: 6, right: 6, background: "rgba(220,38,38,0.8)", borderRadius: "50%", width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -813,566 +805,21 @@ const VideoCall = ({ contact, onClose, isClient }) => {
   return null;
 };
 
-// ─── INVOICE MODAL ────────────────────────────────────────────────────────────
-const InvoiceModal = ({ matters, onClose, onCreated }) => {
-  const [form, setForm] = useState({ matterId: matters[0]?.id || "", description: "", amount: "", dueDate: "", sendNow: true });
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
-
-  const handleSubmit = async (sendNow) => {
-    if (!form.matterId || !form.description || !form.amount || !form.dueDate) { setError("Please fill in all fields."); return; }
-    setSaving(true); setError("");
-    try {
-      const data = await InvoicesAPI.create({
-        matterId: form.matterId,
-        description: form.description,
-        amountCents: Math.round(parseFloat(form.amount) * 100),
-        dueDate: form.dueDate,
-        status: sendNow ? "sent" : "draft",
-      });
-      if (sendNow) await InvoicesAPI.send(data.invoice.id).catch(() => {});
-      onCreated(data.invoice);
-    } catch (err) {
-      setError(err.message || "Failed to create invoice.");
-    }
-    setSaving(false);
-  };
-
-  return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(15,34,64,0.6)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }} onClick={onClose}>
-      <div className="card fade-in" style={{ width: 480, padding: 28 }} onClick={e => e.stopPropagation()}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-          <h3 style={{ fontSize: 17, fontWeight: 700, color: "var(--navy)" }}>Create Invoice</h3>
-          <button className="btn btn-ghost btn-sm" onClick={onClose}><Icon name="x" size={16} /></button>
-        </div>
-        {error && <div style={{ background: "var(--red-pale)", color: "var(--red)", border: "1px solid #FECACA", borderRadius: "var(--radius-sm)", padding: "10px 14px", fontSize: 13.5, marginBottom: 14 }}>{error}</div>}
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div><label>Matter *</label>
-            <select className="input select" value={form.matterId} onChange={e => set("matterId", e.target.value)}>
-              {matters.map(m => <option key={m.id} value={m.id}>{m.title}</option>)}
-            </select>
-          </div>
-          <div><label>Description *</label><input className="input" placeholder="Legal services — March 2026" value={form.description} onChange={e => set("description", e.target.value)} /></div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div><label>Amount ($) *</label><input className="input" type="number" placeholder="1800.00" value={form.amount} onChange={e => set("amount", e.target.value)} /></div>
-            <div><label>Due Date *</label><input className="input" type="date" value={form.dueDate} onChange={e => set("dueDate", e.target.value)} /></div>
-          </div>
-          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 4 }}>
-            <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-            <button className="btn btn-secondary" disabled={saving} onClick={() => handleSubmit(false)}>Save Draft</button>
-            <button className="btn btn-primary" disabled={saving} onClick={() => handleSubmit(true)}><Icon name="send" size={14} />{saving ? "Creating..." : "Send to Client"}</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// ─── DOCUMENT UPLOAD MODAL ─────────────────────────────────────────────────────
-const DocumentUploadModal = ({ matters, onClose, onUploaded, defaultMatterId }) => {
-  const [matterId, setMatterId] = useState(defaultMatterId || matters[0]?.id || "");
-  const [accessLevel, setAccessLevel] = useState("INTERNAL");
-  const [files, setFiles] = useState([]);
-  const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState("");
-  const inputRef = useRef(null);
-
-  const handleUpload = async () => {
-    if (!files.length) { setError("Please select at least one file."); return; }
-    if (!matterId) { setError("Please select a matter."); return; }
-    setUploading(true); setError("");
-    try {
-      const data = await DocumentsAPI.upload(matterId, Array.from(files), accessLevel);
-      onUploaded(data.documents || []);
-    } catch (err) {
-      setError(err.message || "Upload failed. Please try again.");
-    }
-    setUploading(false);
-  };
-
-  return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(15,34,64,0.6)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }} onClick={onClose}>
-      <div className="card fade-in" style={{ width: 480, padding: 28 }} onClick={e => e.stopPropagation()}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-          <h3 style={{ fontSize: 17, fontWeight: 700, color: "var(--navy)" }}>Upload Documents</h3>
-          <button className="btn btn-ghost btn-sm" onClick={onClose}><Icon name="x" size={16} /></button>
-        </div>
-        {error && <div style={{ background: "var(--red-pale)", color: "var(--red)", border: "1px solid #FECACA", borderRadius: "var(--radius-sm)", padding: "10px 14px", fontSize: 13.5, marginBottom: 14 }}>{error}</div>}
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div><label>Matter *</label>
-            <select className="input select" value={matterId} onChange={e => setMatterId(e.target.value)}>
-              {matters.map(m => <option key={m.id} value={m.id}>{m.title}</option>)}
-            </select>
-          </div>
-          <div><label>Visibility</label>
-            <select className="input select" value={accessLevel} onChange={e => setAccessLevel(e.target.value)}>
-              <option value="INTERNAL">Internal only (attorney & staff)</option>
-              <option value="CLIENT">Shared with client</option>
-            </select>
-          </div>
-          <div
-            style={{ border: "2px dashed var(--gray-300)", borderRadius: "var(--radius-md)", padding: 24, textAlign: "center", cursor: "pointer", background: files.length ? "var(--blue-pale)" : "var(--gray-50)" }}
-            onClick={() => inputRef.current?.click()}
-            onDragOver={e => e.preventDefault()}
-            onDrop={e => { e.preventDefault(); setFiles(e.dataTransfer.files); }}>
-            <input ref={inputRef} type="file" multiple style={{ display: "none" }} onChange={e => setFiles(e.target.files)} />
-            <Icon name="upload" size={28} color="var(--gray-400)" />
-            <p style={{ fontSize: 14, color: "var(--gray-600)", marginTop: 8 }}>
-              {files.length ? `${files.length} file(s) selected` : "Click or drag files here"}
-            </p>
-            <p style={{ fontSize: 12, color: "var(--gray-400)", marginTop: 4 }}>PDF, DOCX, JPG, PNG, ZIP up to 50MB</p>
-          </div>
-          {files.length > 0 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              {Array.from(files).map((f, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", background: "var(--gray-50)", borderRadius: "var(--radius-sm)", fontSize: 13 }}>
-                  <Icon name="file" size={13} color="var(--blue)" />
-                  <span style={{ flex: 1, color: "var(--gray-700)" }}>{f.name}</span>
-                  <span style={{ color: "var(--gray-400)" }}>{(f.size / 1024 / 1024).toFixed(1)} MB</span>
-                </div>
-              ))}
-            </div>
-          )}
-          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 4 }}>
-            <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-            <button className="btn btn-primary" disabled={uploading || !files.length} onClick={handleUpload}>
-              <Icon name="upload" size={14} />{uploading ? "Uploading..." : "Upload Files"}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// ─── NEW MATTER MODAL ─────────────────────────────────────────────────────────
-const NewMatterModal = ({ onClose, onCreated, currentUser }) => {
-  const [form, setForm] = useState({
-    clientFirstName: "", clientLastName: "", clientEmail: "", clientPhone: "",
-    title: "", practiceArea: "Family Law", retainerAmount: "", billingType: "Hourly", notes: ""
-  });
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
-
-  const handleSubmit = async () => {
-    if (!form.clientFirstName || !form.clientEmail || !form.title) {
-      setError("Please fill in client name, email, and matter title.");
-      return;
-    }
-    setSaving(true);
-    setError("");
-    try {
-      const data = await MattersAPI.create({
-        title: form.title,
-        practiceArea: form.practiceArea,
-        notes: form.notes,
-        billingType: form.billingType,
-        retainerAmount: form.retainerAmount ? parseFloat(form.retainerAmount) : 0,
-        clientEmail: form.clientEmail,
-        clientFirstName: form.clientFirstName,
-        clientLastName: form.clientLastName,
-        clientPhone: form.clientPhone,
-      });
-      onCreated(data.matter);
-    } catch (err) {
-      setError(err.message || "Failed to create matter. Please try again.");
-    }
-    setSaving(false);
-  };
-
-  return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(15,34,64,0.6)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }} onClick={onClose}>
-      <div className="card fade-in" style={{ width: 560, maxHeight: "85vh", overflow: "auto", padding: 32 }} onClick={e => e.stopPropagation()}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-          <h3 style={{ fontSize: 19, fontWeight: 700, color: "var(--navy)", fontFamily: "var(--font-serif)" }}>Open New Matter</h3>
-          <button className="btn btn-ghost btn-sm" onClick={onClose}><Icon name="x" size={16} /></button>
-        </div>
-        <p style={{ fontSize: 13.5, color: "var(--gray-500)", marginBottom: 24 }}>Fill in the details below. A client portal invitation will be sent automatically.</p>
-
-        {error && <div style={{ background: "var(--red-pale)", color: "var(--red)", border: "1px solid #FECACA", borderRadius: "var(--radius-sm)", padding: "10px 14px", fontSize: 13.5, marginBottom: 16 }}>{error}</div>}
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div><label>Client First Name *</label><input className="input" placeholder="Sarah" value={form.clientFirstName} onChange={e => set("clientFirstName", e.target.value)} /></div>
-            <div><label>Client Last Name</label><input className="input" placeholder="Johnson" value={form.clientLastName} onChange={e => set("clientLastName", e.target.value)} /></div>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div><label>Client Email *</label><input className="input" type="email" placeholder="client@email.com" value={form.clientEmail} onChange={e => set("clientEmail", e.target.value)} /></div>
-            <div><label>Client Phone</label><input className="input" placeholder="(415) 555-0100" value={form.clientPhone} onChange={e => set("clientPhone", e.target.value)} /></div>
-          </div>
-          <div><label>Matter Title *</label><input className="input" placeholder="e.g. Johnson Divorce Proceeding" value={form.title} onChange={e => set("title", e.target.value)} /></div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div><label>Practice Area</label>
-              <select className="input select" value={form.practiceArea} onChange={e => set("practiceArea", e.target.value)}>
-                <option>Family Law</option><option>Estate Planning</option><option>Litigation</option>
-                <option>Corporate</option><option>Personal Injury</option><option>Real Estate</option><option>Criminal Defense</option>
-              </select>
-            </div>
-            <div><label>Billing Type</label>
-              <select className="input select" value={form.billingType} onChange={e => set("billingType", e.target.value)}>
-                <option>Hourly</option><option>Flat fee</option><option>Contingency</option>
-              </select>
-            </div>
-          </div>
-          <div><label>Retainer Amount</label><input className="input" placeholder="$0.00" value={form.retainerAmount} onChange={e => set("retainerAmount", e.target.value)} /></div>
-          <div><label>Initial Notes (internal)</label><textarea className="input textarea" placeholder="Brief description of the matter and client situation..." value={form.notes} onChange={e => set("notes", e.target.value)} /></div>
-          <div style={{ background: "var(--blue-pale)", border: "1px solid var(--blue-pale2)", borderRadius: "var(--radius-sm)", padding: "10px 14px", fontSize: 13, color: "var(--blue)" }}>
-            <Icon name="mail" size={13} color="var(--blue)" style={{ display: "inline", marginRight: 6 }} />
-            A portal invitation email will be sent to the client automatically upon saving.
-          </div>
-          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", paddingTop: 4 }}>
-            <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-            <button className="btn btn-primary" disabled={saving} onClick={handleSubmit}>
-              <Icon name="briefcase" size={14} />{saving ? "Creating..." : "Open Matter & Invite Client"}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// ─── MATTER DETAIL ─────────────────────────────────────────────────────────
-const MatterDetail = ({ matter, messages, showInternal, setShowInternal, invoices, setVideoCallContact, setShowVideoCall, currentUser, setShowInvoiceModal, setSelectedMatter, matterTab, setMatterTab, aiDraft, setAiDraft, newMsg, setNewMsg, generateAIDraft, sendMessage, aiTyping, setShowAIModal, setShowUploadModal, msgEndRef }) => {
-  const matterMsgs = (messages[matter.id] || []);
-  const visibleMsgs = showInternal ? matterMsgs : matterMsgs.filter(m => !m.internal);
-  const docs = matter?.documents || [];
-  const reqs = matter?.docRequests || [];
-  const inv = invoices.filter(i => i.matterId === matter.id);
-  const tl = matter?.events || [];
-
-  return (
-    <div className="fade-in" style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-      {/* Matter header */}
-      <div style={{ background: "var(--white)", borderBottom: "1px solid var(--gray-200)", padding: "16px 24px" }}>
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 10 }}>
-          <div>
-            <button className="btn btn-ghost btn-sm" style={{ marginBottom: 6, paddingLeft: 0 }} onClick={() => setSelectedMatter(null)}>
-              <Icon name="arrow_left" size={14} />Back to matters
-            </button>
-            <h1 style={{ fontFamily: "var(--font-serif)", fontSize: 20, color: "var(--navy)", marginBottom: 4 }}>{matter.title}</h1>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 12.5, color: "var(--gray-400)" }}>{matter.ref}</span>
-              <span style={{ color: "var(--gray-300)" }}>·</span>
-              <span style={{ fontSize: 12.5, color: "var(--gray-500)" }}>{matter.practice}</span>
-              <span style={{ color: "var(--gray-300)" }}>·</span>
-              <StatusBadge status={matter.status} />
-              {matter.urgency === "high" && <StatusBadge status="high" />}
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button className="btn btn-secondary btn-sm" onClick={() => { setVideoCallContact({ name: matter.client, matter: matter.title, myName: currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "You" }); setShowVideoCall(true); }}><Icon name="video" size={14} />Schedule Call</button>
-            <button className="btn btn-primary btn-sm"><Icon name="edit" size={14} />Update Status</button>
-          </div>
-        </div>
-        <div className="tab-bar">
-          {["overview", "messages", "documents", "timeline", "billing"].map(t => (
-            <button key={t} className={`tab ${matterTab === t ? "active" : ""}`} onClick={() => setMatterTab(t)}>
-              {t.charAt(0).toUpperCase() + t.slice(1)}
-              {t === "messages" && matterMsgs.filter(m => !m.read).length > 0 && (
-                <span className="badge badge-red" style={{ marginLeft: 5, padding: "1px 5px", fontSize: 10 }}>{matterMsgs.filter(m => !m.read).length}</span>
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="scroll-y" style={{ flex: 1, padding: 24 }}>
-        {/* OVERVIEW */}
-        {matterTab === "overview" && (
-          <div className="fade-in" style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 20 }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <div className="card" style={{ padding: 20 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--gray-500)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Client</div>
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <Avatar name={matter.client} size={44} color="teal" />
-                  <div>
-                    <div style={{ fontSize: 16, fontWeight: 600, color: "var(--gray-900)" }}>{matter.client}</div>
-                    <div style={{ fontSize: 13.5, color: "var(--gray-500)" }}>{matter.clientEmail}</div>
-                  </div>
-                  <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
-                    <button className="btn btn-secondary btn-sm"><Icon name="message" size={13} /></button>
-                    <button className="btn btn-secondary btn-sm"><Icon name="phone" size={13} /></button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="card" style={{ padding: 20 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--gray-500)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Next Steps</div>
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                  <div style={{ background: "var(--blue-pale)", border: "1.5px solid var(--blue-pale2)", borderRadius: "var(--radius-md)", padding: 14 }}>
-                    <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--blue)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>👤 Client sees</div>
-                    <p style={{ fontSize: 13.5, color: "var(--gray-700)", lineHeight: 1.6 }}>{matter.nextStep}</p>
-                    <button className="btn btn-sm" style={{ background: "var(--blue)", color: "white", marginTop: 10, fontSize: 12 }}>
-                      <Icon name="cpu" size={12} />Generate Update
-                    </button>
-                  </div>
-                  <div style={{ background: "var(--amber-pale)", border: "1.5px solid #FDE68A", borderRadius: "var(--radius-md)", padding: 14 }}>
-                    <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--amber)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>🔒 Internal only</div>
-                    <p style={{ fontSize: 13.5, color: "var(--gray-700)", lineHeight: 1.6 }}>{matter.nextStepInternal}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="card" style={{ padding: 20 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--gray-500)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Document Progress</div>
-                {reqs.length > 0 ? (
-                  <>
-                    <div style={{ marginBottom: 10 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, color: "var(--gray-500)", marginBottom: 5 }}>
-                        <span>{reqs.filter(r => r.done).length} of {reqs.length} received</span>
-                        <span style={{ color: reqs.filter(r => !r.done).length > 0 ? "var(--amber)" : "var(--green)" }}>{reqs.filter(r => !r.done).length > 0 ? `${reqs.filter(r => !r.done).length} outstanding` : "All received ✓"}</span>
-                      </div>
-                      <div className="progress-bar"><div className="progress-fill" style={{ width: `${(reqs.filter(r => r.done).length / reqs.length) * 100}%`, background: reqs.filter(r => !r.done).length > 0 ? "var(--amber)" : "var(--green)" }} /></div>
-                    </div>
-                    {reqs.map(req => (
-                      <div key={req.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0", fontSize: 13.5 }}>
-                        <Icon name={req.done ? "check-circle" : "alert-circle"} size={15} color={req.done ? "var(--green)" : "var(--amber)"} />
-                        <span style={{ color: req.done ? "var(--gray-500)" : "var(--gray-700)", textDecoration: req.done ? "line-through" : "none" }}>{req.label}</span>
-                      </div>
-                    ))}
-                  </>
-                ) : <p style={{ fontSize: 13.5, color: "var(--gray-400)" }}>No document requests for this matter</p>}
-              </div>
-            </div>
-
-            {/* Right column */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <div className="card" style={{ padding: 18 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--gray-500)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Key Dates</div>
-                {matter.nextDeadline ? (
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", background: "var(--red-pale)", borderRadius: "var(--radius-sm)", border: "1px solid #FECACA" }}>
-                    <Icon name="clock" size={16} color="var(--red)" />
-                    <span style={{ fontSize: 13.5, color: "#991B1B", fontWeight: 500 }}>{matter.nextDeadline}</span>
-                  </div>
-                ) : <p style={{ fontSize: 13.5, color: "var(--gray-400)" }}>No upcoming deadlines</p>}
-                <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
-                  <button className="btn btn-secondary btn-sm" style={{ flex: 1, justifyContent: "center", fontSize: 12 }}><Icon name="plus" size={12} />Add Deadline</button>
-                </div>
-              </div>
-
-              <div className="card" style={{ padding: 18 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--gray-500)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Billing Summary</div>
-                {[["Retainer", `$${matter.retainer.toLocaleString()}`], ["Billed", `$${inv.reduce((s,i) => s + i.amount, 0).toLocaleString()}`], ["Collected", `$${matter.paid.toLocaleString()}`], ["Outstanding", `$${inv.filter(i => i.status !== "paid").reduce((s,i) => s + i.amount, 0).toLocaleString()}`]].map(([k, v]) => (
-                  <div key={k} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid var(--gray-100)", fontSize: 13.5 }}>
-                    <span style={{ color: "var(--gray-500)" }}>{k}</span>
-                    <span style={{ fontWeight: 600, color: k === "Outstanding" && inv.filter(i => i.status !== "paid").length > 0 ? "var(--red)" : "var(--gray-800)" }}>{v}</span>
-                  </div>
-                ))}
-                <button className="btn btn-primary btn-sm" style={{ width: "100%", justifyContent: "center", marginTop: 12, fontSize: 12 }} onClick={() => setShowInvoiceModal(true)}><Icon name="plus" size={12} />Create Invoice</button>
-              </div>
-
-              <div className="card" style={{ padding: 18 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--gray-500)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>Matter Team</div>
-                {[{ name: matter.attorney, role: "Lead Attorney", color: "blue" }, { name: "Priya Patel", role: "Paralegal", color: "teal" }].map(m => (
-                  <div key={m.name} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0" }}>
-                    <Avatar name={m.name} size={28} color={m.color} />
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 500, color: "var(--gray-800)" }}>{m.name}</div>
-                      <div style={{ fontSize: 11.5, color: "var(--gray-400)" }}>{m.role}</div>
-                    </div>
-                  </div>
-                ))}
-                <button className="btn btn-ghost btn-sm" style={{ width: "100%", justifyContent: "center", marginTop: 6, fontSize: 12 }}><Icon name="plus" size={12} />Add team member</button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* MESSAGES */}
-        {matterTab === "messages" && (
-          <div className="fade-in" style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 260px)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, alignItems: "center" }}>
-              <div style={{ display: "flex", gap: 6 }}>
-                <button className={`btn btn-sm ${!showInternal ? "btn-primary" : "btn-secondary"}`} onClick={() => setShowInternal(false)}>Client Thread</button>
-                <button className={`btn btn-sm ${showInternal ? "btn-primary" : "btn-secondary"}`} onClick={() => setShowInternal(true)}>🔒 Internal Notes</button>
-              </div>
-              {aiTyping && (
-                <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--purple)" }}>
-                  <div className="ai-typing"><span /><span /><span /></div>
-                  AI is drafting...
-                </div>
-              )}
-            </div>
-            <div className="card" style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-              <div className="scroll-y" style={{ flex: 1, padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
-                {visibleMsgs.map(msg => (
-                  <div key={msg.id} style={{ display: "flex", flexDirection: "column", alignItems: msg.sender === "attorney" ? "flex-end" : "flex-start", gap: 4 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, paddingLeft: msg.sender === "attorney" ? 0 : 4, paddingRight: msg.sender === "attorney" ? 4 : 0 }}>
-                      {msg.sender !== "attorney" && <Avatar name={msg.name} size={22} color={msg.sender === "staff" ? "amber" : "teal"} />}
-                      <span style={{ fontSize: 12, color: "var(--gray-400)" }}>{msg.name} · {msg.time}</span>
-                      {msg.sender === "attorney" && msg.aiGenerated && <span className="ai-badge"><Icon name="cpu" size={10} color="var(--purple)" />AI</span>}
-                    </div>
-                    <div className={`msg-bubble ${msg.sender === "attorney" ? "sent" : msg.internal ? "internal" : "received"}`}>
-                      {msg.body}
-                    </div>
-                    {msg.sender !== "attorney" && !msg.read && (
-                      <span style={{ fontSize: 11, color: "var(--blue)" }}>● New</span>
-                    )}
-                  </div>
-                ))}
-                {aiDraft && (
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
-                    <span className="ai-badge"><Icon name="cpu" size={10} color="var(--purple)" />AI Draft — review before sending</span>
-                    <div className="msg-bubble sent" style={{ background: "linear-gradient(135deg, #7C3AED, #2563EB)", opacity: 0.85, border: "2px dashed rgba(255,255,255,0.3)" }}>
-                      {aiDraft}
-                    </div>
-                  </div>
-                )}
-                <div ref={msgEndRef} />
-              </div>
-              <div style={{ padding: "10px 14px", borderTop: "1px solid var(--gray-200)" }}>
-                {showInternal && (
-                  <div style={{ background: "var(--amber-pale)", border: "1px solid #FDE68A", borderRadius: "var(--radius-sm)", padding: "6px 10px", marginBottom: 8, fontSize: 12, color: "#92400E", display: "flex", gap: 6, alignItems: "center" }}>
-                    <Icon name="lock" size={12} color="#D97706" />
-                    Internal note — not visible to client
-                  </div>
-                )}
-                {aiDraft ? (
-                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <button className="btn btn-danger btn-sm" onClick={() => setAiDraft("")}><Icon name="x" size={13} />Dismiss</button>
-                    <button className="btn btn-secondary btn-sm" onClick={() => { setNewMsg(aiDraft); setAiDraft(""); }}><Icon name="edit" size={13} />Edit</button>
-                    <button className="btn btn-primary btn-sm" onClick={sendMessage}><Icon name="send" size={13} />Send as-is</button>
-                  </div>
-                ) : (
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <textarea className="input textarea" style={{ flex: 1, minHeight: 60, resize: "none", fontSize: 13.5 }} placeholder={showInternal ? "Add an internal note..." : "Write a message to the client..."} value={newMsg} onChange={e => setNewMsg(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }} />
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      <button className="btn btn-purple btn-sm" onClick={generateAIDraft} title="Generate AI Draft"><Icon name="cpu" size={14} /></button>
-                      <button className="btn btn-secondary btn-sm"><Icon name="paperclip" size={14} /></button>
-                      <button className="btn btn-secondary btn-sm"><Icon name="mic" size={14} /></button>
-                      <button className="btn btn-primary btn-sm" onClick={sendMessage}><Icon name="send" size={14} /></button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* DOCUMENTS */}
-        {matterTab === "documents" && (
-          <div className="fade-in">
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
-              <h3 style={{ fontSize: 15, fontWeight: 600, color: "var(--gray-800)" }}>Matter Documents</h3>
-              <div style={{ display: "flex", gap: 8 }}>
-                <button className="btn btn-secondary btn-sm"><Icon name="file" size={13} />Request Documents</button>
-                <button className="btn btn-primary btn-sm"><Icon name="upload" size={13} />Upload</button>
-              </div>
-            </div>
-            <div style={{ display: "grid", gap: 8 }}>
-              {docs.map(doc => (
-                <div key={doc.id} className="card card-hover" style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-                  <div style={{ width: 38, height: 38, background: "var(--blue-pale)", borderRadius: "var(--radius-sm)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <Icon name="file" size={18} color="var(--blue)" />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13.5, fontWeight: 500, color: "var(--gray-800)", marginBottom: 3 }}>{doc.name}</div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span className="ai-badge"><Icon name="tag" size={10} color="var(--purple)" />{doc.aiLabel}</span>
-                      <span style={{ fontSize: 11.5, color: "var(--gray-400)" }}>{Math.round(doc.confidence * 100)}% confident</span>
-                      <span style={{ fontSize: 11.5, color: "var(--gray-300)" }}>·</span>
-                      <span style={{ fontSize: 11.5, color: "var(--gray-400)" }}>by {doc.by}</span>
-                      <span style={{ fontSize: 11.5, color: "var(--gray-300)" }}>·</span>
-                      <span style={{ fontSize: 11.5, color: "var(--gray-400)" }}>{doc.size}</span>
-                      <span className={`badge ${doc.shared ? "badge-blue" : "badge-gray"}`} style={{ fontSize: 10 }}>{doc.shared ? "Client visible" : "Internal"}</span>
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", gap: 6 }}>
-                    <button className="btn btn-ghost btn-sm"><Icon name="eye" size={14} /></button>
-                    <button className="btn btn-ghost btn-sm"><Icon name="download" size={14} /></button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* TIMELINE */}
-        {matterTab === "timeline" && (
-          <div className="fade-in" style={{ maxWidth: 640 }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-              {tl.map((ev, i) => (
-                <div key={ev.id} className="timeline-item" style={{ paddingBottom: i < tl.length - 1 ? 22 : 0 }}>
-                  <div className="timeline-dot" style={{ background: ev.color === "blue" ? "var(--blue-pale2)" : ev.color === "green" ? "var(--green-pale)" : ev.color === "purple" ? "var(--purple-pale)" : ev.color === "teal" ? "var(--teal-pale)" : "var(--gray-100)" }}>
-                    <Icon name={ev.icon} size={14} color={ev.color === "blue" ? "var(--blue)" : ev.color === "green" ? "var(--green)" : ev.color === "purple" ? "var(--purple)" : ev.color === "teal" ? "var(--teal)" : "var(--gray-500)"} />
-                  </div>
-                  <div style={{ paddingTop: 7, flex: 1 }}>
-                    <div style={{ fontSize: 14, color: "var(--gray-800)", lineHeight: 1.55, marginBottom: 2 }}>{ev.text}</div>
-                    <div style={{ fontSize: 12, color: "var(--gray-400)" }}>{ev.date}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* BILLING */}
-        {matterTab === "billing" && (
-          <div className="fade-in">
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
-              <h3 style={{ fontSize: 15, fontWeight: 600, color: "var(--gray-800)" }}>Invoices & Payments</h3>
-              <button className="btn btn-primary btn-sm" onClick={() => setShowInvoiceModal(true)}><Icon name="plus" size={13} />New Invoice</button>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {inv.map(invoice => (
-                <div key={invoice.id} className="card" style={{ padding: "14px 18px", display: "flex", alignItems: "center", gap: 14 }}>
-                  <div style={{ width: 40, height: 40, background: invoice.status === "paid" ? "var(--green-pale)" : invoice.status === "overdue" ? "var(--red-pale)" : "var(--blue-pale)", borderRadius: "var(--radius-sm)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <Icon name="dollar" size={18} color={invoice.status === "paid" ? "var(--green)" : invoice.status === "overdue" ? "var(--red)" : "var(--blue)"} />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 14, fontWeight: 500, color: "var(--gray-800)", marginBottom: 2 }}>{invoice.desc}</div>
-                    <div style={{ fontSize: 12.5, color: "var(--gray-400)" }}>{invoice.number} · Created {invoice.date} · Due {invoice.due}</div>
-                  </div>
-                  <div style={{ textAlign: "right", marginRight: 12 }}>
-                    <div style={{ fontSize: 16, fontWeight: 700, color: "var(--gray-900)" }}>${invoice.amount.toLocaleString()}</div>
-                  </div>
-                  <StatusBadge status={invoice.status} />
-                  {invoice.status !== "paid" && <button className="btn btn-secondary btn-sm"><Icon name="send" size={13} />Remind</button>}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-// ─── NAV ITEM ─────────────────────────────────────────────────────────────────
-const NavItem = ({ icon, label, page, badge, activePage, setActivePage, setSelectedMatter }) => (
-  <div className={`nav-item ${activePage === page ? "active" : ""}`} onClick={() => { setActivePage(page); setSelectedMatter(null); }}>
-    <Icon name={icon} size={16} color={activePage === page ? "white" : "rgba(255,255,255,0.6)"} />
-    <span>{label}</span>
-    {badge > 0 && <span className="badge-count">{badge}</span>}
-  </div>
-);
-
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function CounselBridge() {
-  const [view, setView] = useState(() => {
-    const token = localStorage.getItem("cb_token");
-    const user = (() => { try { return JSON.parse(localStorage.getItem("cb_user")); } catch { return null; } })();
-    if (token && user) return user.role === "CLIENT" ? "client" : "attorney";
-    return "login";
-  });
+  const [view, setView] = useState("login"); // login | attorney | client
   const [loginType, setLoginType] = useState("attorney");
   const [activePage, setActivePage] = useState("dashboard");
   const [selectedMatter, setSelectedMatter] = useState(null);
   const [matterTab, setMatterTab] = useState("overview");
   const [showAIModal, setShowAIModal] = useState(null);
-  const [aiQueue, setAiQueue] = useState([]);
-  const [messages, setMessages] = useState({});
+  const [aiQueue, setAiQueue] = useState(AI_QUEUE);
+  const [messages, setMessages] = useState(MESSAGES);
   const [newMsg, setNewMsg] = useState("");
   const [showInternal, setShowInternal] = useState(false);
   const [aiTyping, setAiTyping] = useState(false);
   const [aiDraft, setAiDraft] = useState("");
-  const [matters, setMatters] = useState([]);
+  const [matters, setMatters] = useState(MATTERS);
   const [notifications, setNotifications] = useState(3);
   const [searchQ, setSearchQ] = useState("");
   const [clientMatterId] = useState(1);
@@ -1387,20 +834,6 @@ export default function CounselBridge() {
   const [showVideoCall, setShowVideoCall] = useState(false);
   const [videoCallContact, setVideoCallContact] = useState(null);
   const [showNewMatterModal, setShowNewMatterModal] = useState(false);
-  const [currentUser, setCurrentUser] = useState(() => { try { return JSON.parse(localStorage.getItem("cb_user")); } catch { return null; } });
-  const [currentFirm, setCurrentFirm] = useState(() => { try { return JSON.parse(localStorage.getItem("cb_firm")); } catch { return null; } });
-  const [loginEmail, setLoginEmail] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
-  const [loginError, setLoginError] = useState("");
-  const [loginLoading, setLoginLoading] = useState(false);
-  const [clientMatter, setClientMatter] = useState(null);
-  const [invoices, setInvoices] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [digestText, setDigestText] = useState("");
-  const [showUploadModal, setShowUploadModal] = useState(false);
-  const [authMode, setAuthMode] = useState("login");
-  const [regData, setRegData] = useState({ firmName: "", firstName: "", lastName: "", email: "", password: "", confirmPassword: "" });
-  const setReg = (k, v) => setRegData(r => ({ ...r, [k]: v }));
   const msgEndRef = useRef(null);
 
   useEffect(() => {
@@ -1417,87 +850,31 @@ export default function CounselBridge() {
     msgEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, chatHistory]);
 
-  // Load data when view changes
-  useEffect(() => {
-    if (view === "attorney" && AuthAPI.isLoggedIn()) {
-      setLoading(true);
-      Promise.all([MattersAPI.list(), AIAPI.queue(), InvoicesAPI.list()])
-        .then(([mattersRes, queueRes, invoicesRes]) => {
-          const normalized = (mattersRes?.matters || []).map(normalizeMatter);
-          setMatters(normalized);
-          setAiQueue(normalizeAIQueue(queueRes?.queue || []));
-          setInvoices(normalizeInvoices(invoicesRes?.invoices || []));
-          setNotifications((queueRes?.queue || []).length);
-        })
-        .catch(console.error)
-        .finally(() => setLoading(false));
-    }
-    if (view === "client" && AuthAPI.isLoggedIn()) {
-      setLoading(true);
-      MattersAPI.list()
-        .then(res => {
-          const userMatters = res?.matters || [];
-          if (userMatters.length > 0) {
-            return MattersAPI.get(userMatters[0].id).then(full => {
-              const normalized = normalizeMatter(full?.matter);
-              setClientMatter(normalized);
-              if (full?.matter?.threads) {
-                const msgs = normalizeMessages(full.matter.threads, TokenStore.getUser()?.id);
-                setMessages(msgs);
-              }
-              return InvoicesAPI.clientList();
-            }).then(invRes => {
-              setInvoices(normalizeInvoices(invRes?.invoices || []));
-            });
-          }
-        })
-        .catch(console.error)
-        .finally(() => setLoading(false));
-    }
-  }, [view]);
-
-  // Load messages when matter selected
-  useEffect(() => {
-    if (selectedMatter?.id && view === "attorney" && AuthAPI.isLoggedIn()) {
-      MessagesAPI.threads(selectedMatter.id).then(res => {
-        if (res?.threads) {
-          const msgs = normalizeMessages(res.threads, TokenStore.getUser()?.id);
-          setMessages(prev => ({ ...prev, ...msgs }));
-          const firstThread = res.threads.find(t => !t.isInternal);
-          const internalThread = res.threads.find(t => t.isInternal);
-          if (firstThread) setSelectedMatter(m => ({ ...m, threadId: firstThread.id, internalThreadId: internalThread?.id }));
-        }
-      }).catch(console.error);
-    }
-  }, [selectedMatter?.id]);
-
-  const generateAIDraft = async () => {
+  const generateAIDraft = () => {
     if (!selectedMatter) return;
     setAiTyping(true);
     setAiDraft("");
-    try {
-      const res = await AIAPI.draftMessage(selectedMatter.id, "Recent client messages");
-      setAiDraft(res?.draft || "I've reviewed your recent message and wanted to provide an update on your matter. Please feel free to reach out if you have any questions.");
-    } catch {
-      setAiDraft("I've reviewed your recent message and wanted to provide an update on your matter. Please feel free to reach out if you have any questions.");
-    }
-    setAiTyping(false);
+    const drafts = {
+      1: "Hi Sarah, thank you for uploading those documents — I can confirm we received the bank statements and both tax returns. I'm still waiting on the mortgage statement, your retirement account statements, and any business ownership documents. Could you upload those as soon as possible? We have until March 20 to file.",
+      3: "Hi Amy, I wanted to follow up on the discovery letter from opposing counsel. I've reviewed it thoroughly and will be filing our response by end of this week. Your court date on April 3rd remains confirmed. Please let me know if you have any questions.",
+    };
+    setTimeout(() => {
+      setAiTyping(false);
+      setAiDraft(drafts[selectedMatter.id] || "I've reviewed your recent message and wanted to provide an update on your matter. Please feel free to reach out if you have any questions.");
+    }, 1800);
   };
 
-  const sendMessage = async () => {
+  const sendMessage = () => {
     if (!newMsg.trim() && !aiDraft.trim()) return;
     const body = aiDraft || newMsg;
-    const threadId = showInternal ? selectedMatter?.internalThreadId : selectedMatter?.threadId;
-    const userName = currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "Attorney";
     const newMessages = { ...messages };
     if (!newMessages[selectedMatter.id]) newMessages[selectedMatter.id] = [];
     newMessages[selectedMatter.id] = [...newMessages[selectedMatter.id], {
-      id: Date.now(), sender: "attorney", name: userName, body, time: "Just now", read: true, internal: showInternal, aiGenerated: !!aiDraft
+      id: Date.now(), sender: "attorney", name: "Alex Rivera", body, time: "Just now", read: true, internal: showInternal, aiGenerated: !!aiDraft
     }];
     setMessages(newMessages);
     setNewMsg("");
     setAiDraft("");
-    if (threadId) MessagesAPI.send(threadId, body, showInternal).catch(console.error);
   };
 
   const sendClientChat = async () => {
@@ -1507,204 +884,129 @@ export default function CounselBridge() {
     setChatHistory(h => [...h, { role: "user", text: userMsg }]);
     setAiChatLoading(true);
     try {
-      const res = await AIAPI.clientChat(userMsg, chatHistory.map(h => ({ role: h.role === "ai" ? "assistant" : "user", content: h.text })));
-      setChatHistory(h => [...h, { role: "ai", text: res?.response || "I'm sorry, I couldn't process that. Please message your attorney directly." }]);
+      const resp = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1000,
+          system: `You are the AI assistant for CounselBridge, a legal client portal. The client is Sarah Johnson, who has an active divorce proceeding (Family Law). You can help with general process questions and case status. You MUST NOT provide legal advice, predict outcomes, or advise on legal strategy. If asked for legal advice, say: "That's a great question for your attorney. I can help with general process questions — for specific legal guidance, please message Alex Rivera directly." Keep responses concise, warm, and in plain English. Current case status: Active. Next step: Upload mortgage statement, retirement account statements, and business documents.`,
+          messages: [{ role: "user", content: userMsg }]
+        })
+      });
+      const data = await resp.json();
+      const text = data.content?.map(c => c.text || "").join("") || "I'm sorry, I couldn't process that. Please message your attorney directly.";
+      setChatHistory(h => [...h, { role: "ai", text }]);
     } catch {
       setChatHistory(h => [...h, { role: "ai", text: "I'm having trouble connecting right now. Please message your attorney directly for assistance." }]);
     }
     setAiChatLoading(false);
   };
 
-  const approveAI = async (id) => {
-    try { await AIAPI.approve(id); } catch {}
+  const approveAI = (id, text) => {
     setAiQueue(q => q.filter(i => i.id !== id));
     setShowAIModal(null);
     setNotifications(n => Math.max(0, n - 1));
   };
 
-  const rejectAI = async (id) => {
-    try { await AIAPI.reject(id); } catch {}
+  const rejectAI = (id) => {
     setAiQueue(q => q.filter(i => i.id !== id));
     setShowAIModal(null);
-  };
-
-  const handleLogout = async () => {
-    await AuthAPI.logout();
-    setCurrentUser(null); setCurrentFirm(null);
-    setMatters([]); setMessages({}); setInvoices([]); setAiQueue([]);
-    setView("login");
   };
 
   const filteredMatters = matters.filter(m =>
     !searchQ || m.title.toLowerCase().includes(searchQ.toLowerCase()) || m.client.toLowerCase().includes(searchQ.toLowerCase()) || m.practice.toLowerCase().includes(searchQ.toLowerCase())
   );
 
-  // ─── LOGIN / SIGNUP SCREEN ───────────────────────────────────────────────────
-  if (view === "login") {
+  // ─── LOGIN SCREEN ──────────────────────────────────────────────────────────
+  if (view === "login") return (
+    <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #0F2240 0%, #1B3A5C 50%, #0F2240 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, position: "relative", overflow: "hidden" }}>
+      <style>{css}</style>
+      {/* Background decoration */}
+      <div style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(circle at 20% 80%, rgba(37,99,235,0.15) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(13,148,136,0.1) 0%, transparent 50%)", pointerEvents: "none" }} />
+      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "1px", background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)" }} />
 
-    const handleLogin = async () => {
-      if (!loginEmail.trim() || !loginPassword.trim()) { setLoginError("Please enter your email and password."); return; }
-      setLoginLoading(true); setLoginError("");
-      try {
-        const data = await AuthAPI.login(loginEmail, loginPassword);
-        setCurrentUser(data.user);
-        setCurrentFirm(data.firm);
-        setView(data.user.role === "CLIENT" ? "client" : "attorney");
-        setActivePage("dashboard");
-      } catch (err) {
-        setLoginError(err.message || "Invalid email or password.");
-      }
-      setLoginLoading(false);
-    };
-
-    const handleSignup = async () => {
-      if (!regData.firmName || !regData.firstName || !regData.email || !regData.password) { setLoginError("Please fill in all required fields."); return; }
-      if (regData.password !== regData.confirmPassword) { setLoginError("Passwords do not match."); return; }
-      if (regData.password.length < 8) { setLoginError("Password must be at least 8 characters."); return; }
-      setLoginLoading(true); setLoginError("");
-      try {
-        const data = await AuthAPI.register(regData.firmName, regData.firstName, regData.lastName, regData.email, regData.password);
-        setCurrentUser(data.user);
-        setCurrentFirm(data.firm);
-        setView("attorney");
-        setActivePage("dashboard");
-      } catch (err) {
-        setLoginError(err.message || "Failed to create account. Please try again.");
-      }
-      setLoginLoading(false);
-    };
-
-    const handleMagicLink = async () => {
-      if (!loginEmail.trim()) { setLoginError("Please enter your email address first."); return; }
-      try {
-        await AuthAPI.magicLink(loginEmail);
-        setLoginError("✓ Magic link sent! Check your email.");
-      } catch (err) {
-        setLoginError(err.message || "Failed to send magic link.");
-      }
-    };
-
-    return (
-      <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #0F2240 0%, #1B3A5C 50%, #0F2240 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, position: "relative", overflow: "hidden" }}>
-        <style>{css}</style>
-        <div style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(circle at 20% 80%, rgba(37,99,235,0.15) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(13,148,136,0.1) 0%, transparent 50%)", pointerEvents: "none" }} />
-        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "1px", background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)" }} />
-
-        <div className="fade-in" style={{ width: "100%", maxWidth: authMode === "signup" ? 500 : 420 }}>
-          {/* Logo */}
-          <div style={{ textAlign: "center", marginBottom: 32 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 8 }}>
-              <div style={{ width: 42, height: 42, background: "var(--blue)", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Icon name="shield" size={22} color="white" />
-              </div>
-              <span style={{ fontFamily: "var(--font-serif)", fontSize: 28, color: "white", letterSpacing: "-0.5px" }}>CounselBridge</span>
+      <div className="fade-in" style={{ width: "100%", maxWidth: 420 }}>
+        {/* Logo */}
+        <div style={{ textAlign: "center", marginBottom: 36 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 10 }}>
+            <div style={{ width: 42, height: 42, background: "var(--blue)", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <span style={{ fontSize: 22 }}>⚖️</span>
             </div>
-            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 13.5 }}>Secure Legal Communication Platform</p>
+            <span style={{ fontFamily: "var(--font-serif)", fontSize: 28, color: "white", letterSpacing: "-0.5px" }}>CounselBridge</span>
           </div>
+          <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 13.5 }}>Secure Legal Communication Platform</p>
+        </div>
 
-          {/* Attorney / Client toggle — only show on login */}
-          {authMode === "login" && (
-            <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: "var(--radius-md)", padding: 4, display: "flex", marginBottom: 20, border: "1px solid rgba(255,255,255,0.1)" }}>
-              {["attorney", "client"].map(t => (
-                <button key={t} onClick={() => { setLoginType(t); setLoginError(""); }} style={{ flex: 1, padding: "9px 0", borderRadius: "var(--radius-sm)", background: loginType === t ? "var(--white)" : "transparent", color: loginType === t ? "var(--navy)" : "rgba(255,255,255,0.6)", fontWeight: 600, fontSize: 13.5, cursor: "pointer", border: "none", transition: "all var(--transition)", fontFamily: "var(--font-sans)" }}>
-                  {t === "attorney" ? "⚖️  Attorney / Staff" : "👤  Client"}
-                </button>
-              ))}
-            </div>
-          )}
+        {/* Toggle */}
+        <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: "var(--radius-md)", padding: 4, display: "flex", marginBottom: 24, border: "1px solid rgba(255,255,255,0.1)" }}>
+          {["attorney", "client"].map(t => (
+            <button key={t} onClick={() => setLoginType(t)} style={{ flex: 1, padding: "9px 0", borderRadius: "var(--radius-sm)", background: loginType === t ? "var(--white)" : "transparent", color: loginType === t ? "var(--navy)" : "rgba(255,255,255,0.6)", fontWeight: 600, fontSize: 13.5, cursor: "pointer", border: "none", transition: "all var(--transition)", fontFamily: "var(--font-sans)" }}>
+              {t === "attorney" ? "⚖️  Attorney / Staff" : "👤  Client"}
+            </button>
+          ))}
+        </div>
 
-          <div style={{ background: "rgba(255,255,255,0.97)", borderRadius: "var(--radius-xl)", padding: "32px 28px", boxShadow: "var(--shadow-xl)" }}>
-            <h2 style={{ fontFamily: "var(--font-serif)", fontSize: 22, color: "var(--navy)", marginBottom: 4 }}>
-              {authMode === "signup" ? "Create your firm account" : loginType === "attorney" ? "Welcome back" : "Your secure portal"}
-            </h2>
-            <p style={{ fontSize: 13.5, color: "var(--gray-500)", marginBottom: 20 }}>
-              {authMode === "signup" ? "Get started with a 14-day free trial — no credit card required." : loginType === "attorney" ? "Sign in to your firm workspace" : "Access your case information securely"}
-            </p>
-
-            {loginError && (
-              <div style={{ background: loginError.startsWith("✓") ? "var(--green-pale)" : "var(--red-pale)", color: loginError.startsWith("✓") ? "var(--green)" : "var(--red)", border: `1px solid ${loginError.startsWith("✓") ? "#BBF7D0" : "#FECACA"}`, borderRadius: "var(--radius-sm)", padding: "10px 14px", fontSize: 13.5, marginBottom: 16 }}>
-                {loginError}
-              </div>
-            )}
-
-            {authMode === "signup" ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: 13 }}>
-                <div><label>Firm Name *</label><input className="input" placeholder="Your Firm" value={regData.firmName} onChange={e => setReg("firmName", e.target.value)} /></div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                  <div><label>First Name *</label><input className="input" placeholder="Alex" value={regData.firstName} onChange={e => setReg("firstName", e.target.value)} /></div>
-                  <div><label>Last Name</label><input className="input" placeholder="Rivera" value={regData.lastName} onChange={e => setReg("lastName", e.target.value)} /></div>
-                </div>
-                <div><label>Email Address *</label><input className="input" type="email" placeholder="alex@yourfirm.com" value={regData.email} onChange={e => setReg("email", e.target.value)} /></div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                  <div><label>Password *</label><input className="input" type="password" placeholder="Min. 8 characters" value={regData.password} onChange={e => setReg("password", e.target.value)} /></div>
-                  <div><label>Confirm Password *</label><input className="input" type="password" placeholder="Repeat password" value={regData.confirmPassword} onChange={e => setReg("confirmPassword", e.target.value)} onKeyDown={e => e.key === "Enter" && handleSignup()} /></div>
-                </div>
-                <button className="btn btn-primary" disabled={loginLoading} style={{ width: "100%", justifyContent: "center", padding: "11px 0", fontSize: 15, borderRadius: "var(--radius-md)", marginTop: 4 }} onClick={handleSignup}>
-                  {loginLoading ? "Creating account..." : <> Create Account <Icon name="arrow_right" size={16} /></>}
-                </button>
-                <p style={{ textAlign: "center", fontSize: 13, color: "var(--gray-500)", marginTop: 4 }}>
-                  Already have an account?{" "}
-                  <span style={{ color: "var(--blue)", cursor: "pointer", fontWeight: 600 }} onClick={() => { setAuthMode("login"); setLoginError(""); }}>Sign in</span>
-                </p>
-              </div>
-            ) : (
-              <>
-                <div style={{ marginBottom: 14 }}>
-                  <label>Email address</label>
-                  <input className="input" type="email" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} placeholder="you@example.com" onKeyDown={e => e.key === "Enter" && handleLogin()} />
-                </div>
-                <div style={{ marginBottom: 20 }}>
-                  <label>Password</label>
-                  <input className="input" type="password" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} placeholder="••••••••" onKeyDown={e => e.key === "Enter" && handleLogin()} />
-                </div>
-                <button className="btn btn-primary" disabled={loginLoading} style={{ width: "100%", justifyContent: "center", padding: "11px 0", fontSize: 15, borderRadius: "var(--radius-md)" }} onClick={handleLogin}>
-                  {loginLoading ? "Signing in..." : <> Sign In Securely <Icon name="arrow_right" size={16} /></>}
-                </button>
-                {loginType === "client" && (
-                  <>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "16px 0" }}>
-                      <div style={{ flex: 1, height: 1, background: "var(--gray-200)" }} />
-                      <span style={{ fontSize: 12, color: "var(--gray-400)" }}>or</span>
-                      <div style={{ flex: 1, height: 1, background: "var(--gray-200)" }} />
-                    </div>
-                    <button className="btn btn-secondary" style={{ width: "100%", justifyContent: "center", borderRadius: "var(--radius-md)" }} onClick={handleMagicLink}>
-                      <Icon name="mail" size={15} /> Send me a magic link
-                    </button>
-                  </>
-                )}
-                {loginType === "attorney" && (
-                  <p style={{ textAlign: "center", fontSize: 13, color: "var(--gray-500)", marginTop: 16 }}>
-                    New to CounselBridge?{" "}
-                    <span style={{ color: "var(--blue)", cursor: "pointer", fontWeight: 600 }} onClick={() => { setAuthMode("signup"); setLoginError(""); }}>Create a firm account</span>
-                  </p>
-                )}
-              </>
-            )}
-          </div>
-          <p style={{ textAlign: "center", marginTop: 20, fontSize: 12, color: "rgba(255,255,255,0.35)" }}>
-            Protected by 256-bit encryption · SOC 2 compliant
+        {/* Card */}
+        <div style={{ background: "rgba(255,255,255,0.97)", borderRadius: "var(--radius-xl)", padding: "32px 28px", boxShadow: "var(--shadow-xl)" }}>
+          <h2 style={{ fontFamily: "var(--font-serif)", fontSize: 22, color: "var(--navy)", marginBottom: 6 }}>
+            {loginType === "attorney" ? "Welcome back" : "Your secure portal"}
+          </h2>
+          <p style={{ fontSize: 13.5, color: "var(--gray-500)", marginBottom: 24 }}>
+            {loginType === "attorney" ? "Sign in to your firm workspace" : "Access your case information securely"}
           </p>
-        </div>
-        <div style={{ position: "fixed", bottom: 20, right: 20, display: "flex", gap: 8 }}>
-          <button className="btn btn-sm" style={{ background: "rgba(255,255,255,0.15)", color: "white", border: "1px solid rgba(255,255,255,0.2)", backdropFilter: "blur(8px)" }} onClick={() => { setView("attorney"); setActivePage("dashboard"); }}>
-            Demo (Attorney) →
+          <div style={{ marginBottom: 14 }}>
+            <label>Email address</label>
+            <input className="input" type="email" defaultValue={loginType === "attorney" ? "alex.rivera@riveralaw.com" : "sarah.johnson@email.com"} placeholder="you@example.com" />
+          </div>
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
+              <label style={{ marginBottom: 0 }}>Password</label>
+              <span style={{ fontSize: 12.5, color: "var(--blue)", cursor: "pointer" }}>Forgot password?</span>
+            </div>
+            <input className="input" type="password" defaultValue="••••••••" />
+          </div>
+          <button className="btn btn-primary" style={{ width: "100%", justifyContent: "center", padding: "11px 0", fontSize: 15, borderRadius: "var(--radius-md)" }} onClick={() => { setView(loginType === "attorney" ? "attorney" : "client"); setActivePage("dashboard"); }}>
+            Sign In Securely <Icon name="arrow_right" size={16} />
           </button>
-          <button className="btn btn-sm" style={{ background: "rgba(255,255,255,0.15)", color: "white", border: "1px solid rgba(255,255,255,0.2)", backdropFilter: "blur(8px)" }} onClick={() => setView("client")}>
-            Demo (Client) →
-          </button>
+          {loginType === "client" && (
+            <>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "16px 0" }}>
+                <div style={{ flex: 1, height: 1, background: "var(--gray-200)" }} />
+                <span style={{ fontSize: 12, color: "var(--gray-400)" }}>or</span>
+                <div style={{ flex: 1, height: 1, background: "var(--gray-200)" }} />
+              </div>
+              <button className="btn btn-secondary" style={{ width: "100%", justifyContent: "center", borderRadius: "var(--radius-md)" }}>
+                <Icon name="mail" size={15} /> Send me a magic link
+              </button>
+            </>
+          )}
         </div>
+        <p style={{ textAlign: "center", marginTop: 20, fontSize: 12, color: "rgba(255,255,255,0.35)" }}>
+          Protected by 256-bit encryption · SOC 2 compliant
+        </p>
       </div>
-    );
-  }
 
-      // ─── CLIENT PORTAL ─────────────────────────────────────────────────────────
+      {/* Demo switcher */}
+      <div style={{ position: "fixed", bottom: 20, right: 20, display: "flex", gap: 8 }}>
+        <button className="btn btn-sm" style={{ background: "rgba(255,255,255,0.15)", color: "white", border: "1px solid rgba(255,255,255,0.2)", backdropFilter: "blur(8px)" }} onClick={() => { setLoginType("attorney"); setView("attorney"); setActivePage("dashboard"); }}>
+          Attorney Demo →
+        </button>
+        <button className="btn btn-sm" style={{ background: "rgba(255,255,255,0.15)", color: "white", border: "1px solid rgba(255,255,255,0.2)", backdropFilter: "blur(8px)" }} onClick={() => { setLoginType("client"); setView("client"); }}>
+          Client Demo →
+        </button>
+      </div>
+    </div>
+  );
+
+  // ─── CLIENT PORTAL ─────────────────────────────────────────────────────────
   if (view === "client") {
-    const matter = clientMatter;
-    const docReqs = clientMatter?.docRequests || [];
-    const timeline = clientMatter?.events || [];
-    const clientMsgs = (messages[clientMatter?.id] || []).filter(m => !m.internal);
+    const matter = MATTERS.find(m => m.id === clientMatterId);
+    const docReqs = DOC_REQUESTS[clientMatterId] || [];
+    const timeline = TIMELINE[clientMatterId] || [];
+    const clientMsgs = (messages[clientMatterId] || []).filter(m => !m.internal);
     const totalReqs = docReqs.length;
-    const doneReqs = docReqs.filter(d => d.done || d.status === "RECEIVED").length;
+    const doneReqs = docReqs.filter(d => d.done).length;
 
     return (
       <div style={{ minHeight: "100vh", background: "var(--gray-50)", fontFamily: "var(--font-sans)" }}>
@@ -1721,14 +1023,14 @@ export default function CounselBridge() {
         <div style={{ background: "var(--white)", borderBottom: "1px solid var(--gray-200)", padding: "0 24px", height: 60, display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 10, boxShadow: "var(--shadow-sm)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ width: 30, height: 30, background: "var(--blue)", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Icon name="shield" size={16} color="white" />
+              <span style={{ fontSize: 16 }}>⚖️</span>
             </div>
             <span style={{ fontFamily: "var(--font-serif)", fontSize: 18, color: "var(--navy)" }}>CounselBridge</span>
             <span style={{ fontSize: 12, color: "var(--gray-400)", marginLeft: 4 }}>· {currentFirm?.name || "Your Firm"}</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ fontSize: 13.5, color: "var(--gray-600)" }}>{matters[0]?.client || "Your Client"}</span>
-           <Avatar name="Client" size={32} color="teal" />
+            <span style={{ fontSize: 13.5, color: "var(--gray-600)" }}>Sarah Johnson</span>
+            <Avatar name="Sarah Johnson" size={32} color="teal" />
             <button className="btn btn-ghost btn-sm" onClick={() => setView("login")}><Icon name="log-out" size={15} /></button>
           </div>
         </div>
@@ -1807,10 +1109,10 @@ export default function CounselBridge() {
                     <Icon name="video" size={20} color="var(--blue)" />
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: "var(--gray-800)", marginBottom: 2 }}>{`Video consultation with ${currentUser ? currentUser.firstName + " " + currentUser.lastName : "Attorney"}`}</div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: "var(--gray-800)", marginBottom: 2 }}>Video consultation with Alex Rivera</div>
                     <div style={{ fontSize: 13, color: "var(--gray-500)" }}>Today · 2:00 PM · ~30 minutes</div>
                   </div>
-                  <button className="btn btn-primary btn-sm" onClick={() => { setVideoCallContact({ name: matter?.attorney || "Attorney", matter: matter?.title || "", myName: currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "You" }); setShowVideoCall(true); }}>
+                  <button className="btn btn-primary btn-sm" onClick={() => { setVideoCallContact({ name: "Alex Rivera", matter: matter.title }); setShowVideoCall(true); }}>
                     <Icon name="video" size={13} />Join
                   </button>
                 </div>
@@ -1832,13 +1134,13 @@ export default function CounselBridge() {
             <div className="fade-in">
               <div className="card" style={{ overflow: "hidden" }}>
                 <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--gray-200)", display: "flex", alignItems: "center", gap: 10 }}>
-                  <Avatar name={currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "Attorney"} size={28} color="blue" />
+                  <Avatar name="Alex Rivera" size={28} color="blue" />
                   <div>
-                    <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--gray-800)" }}>{currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "Attorney"}</div>
-                    <div style={{ fontSize: 12, color: "var(--gray-400)" }}>{currentFirm?.name || "Your Firm"} · Your Attorney</div>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--gray-800)" }}>Alex Rivera</div>
+                    <div style={{ fontSize: 12, color: "var(--gray-400)" }}>Rivera & Associates · Your Attorney</div>
                   </div>
                   <div style={{ marginLeft: "auto" }}>
-                    <button className="btn btn-secondary btn-sm" onClick={() => { setVideoCallContact({ name: matter?.attorney || "Attorney", matter: matter?.title || "", myName: currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "You" }); setShowVideoCall(true); }}><Icon name="video" size={13} />Video Call</button>
+                    <button className="btn btn-secondary btn-sm" onClick={() => { setVideoCallContact({ name: "Alex Rivera", matter: matter.title }); setShowVideoCall(true); }}><Icon name="video" size={13} />Video Call</button>
                   </div>
                 </div>
                 <div className="scroll-y" style={{ height: 360, padding: "16px", display: "flex", flexDirection: "column", gap: 10 }}>
@@ -1855,8 +1157,8 @@ export default function CounselBridge() {
                   <div ref={msgEndRef} />
                 </div>
                 <div style={{ padding: "12px 14px", borderTop: "1px solid var(--gray-200)", display: "flex", gap: 8 }}>
-                  <input className="input" style={{ flex: 1 }} placeholder="Message your attorney..." value={newMsg} onChange={e => setNewMsg(e.target.value)} onKeyDown={e => { if(e.key==="Enter"&&newMsg.trim()){ const updated={...messages}; if(!updated[1])updated[1]=[]; updated[1]=[...updated[1],{id:Date.now(),sender:"client",name:selectedMatter?.client || "Client",body:newMsg,time:"Just now",read:false,internal:false}]; setMessages(updated); setNewMsg(""); } }} />
-                  <button className="btn btn-primary btn-sm" onClick={() => { if(!newMsg.trim())return; const updated={...messages}; if(!updated[1])updated[1]=[]; updated[1]=[...updated[1],{id:Date.now(),sender:"client",name:"Client",body:newMsg,time:"Just now",read:false,internal:false}]; setMessages(updated); setNewMsg(""); }}><Icon name="send" size={14} /></button>
+                  <input className="input" style={{ flex: 1 }} placeholder="Message your attorney..." value={newMsg} onChange={e => setNewMsg(e.target.value)} onKeyDown={e => { if(e.key==="Enter"&&newMsg.trim()){ const updated={...messages}; if(!updated[1])updated[1]=[]; updated[1]=[...updated[1],{id:Date.now(),sender:"client",name:"Sarah Johnson",body:newMsg,time:"Just now",read:false,internal:false}]; setMessages(updated); setNewMsg(""); } }} />
+                  <button className="btn btn-primary btn-sm" onClick={() => { if(!newMsg.trim())return; const updated={...messages}; if(!updated[1])updated[1]=[]; updated[1]=[...updated[1],{id:Date.now(),sender:"client",name:"Sarah Johnson",body:newMsg,time:"Just now",read:false,internal:false}]; setMessages(updated); setNewMsg(""); }}><Icon name="send" size={14} /></button>
                 </div>
               </div>
             </div>
@@ -1886,7 +1188,7 @@ export default function CounselBridge() {
               </div>
               <div className="card" style={{ padding: 20 }}>
                 <div style={{ fontSize: 14, fontWeight: 600, color: "var(--gray-800)", marginBottom: 14 }}>Shared Documents</div>
-                {(clientMatter?.documents || []).filter(d => d.accessLevel === "CLIENT" || d.shared).map(doc => (
+                {(DOCUMENTS[1] || []).filter(d => d.shared).map(doc => (
                   <div key={doc.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid var(--gray-100)" }}>
                     <div style={{ width: 32, height: 32, background: "var(--blue-pale)", borderRadius: "var(--radius-sm)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <Icon name="file" size={14} color="var(--blue)" />
@@ -1927,7 +1229,7 @@ export default function CounselBridge() {
 
               {/* Invoices */}
               <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--gray-700)", marginBottom: 4 }}>Invoices</div>
-              {invoices.filter(i => i.matterId === clientMatter?.id).map(inv => (
+              {INVOICES.filter(i => i.matterId === clientMatterId).map(inv => (
                 <div key={inv.id} className="card" style={{ padding: "18px 20px" }}>
                   <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: inv.status !== "paid" ? 14 : 0 }}>
                     <div>
@@ -2026,6 +1328,323 @@ export default function CounselBridge() {
   }
 
   // ─── ATTORNEY WORKSPACE ────────────────────────────────────────────────────
+  const NavItem = ({ icon, label, page, badge }) => (
+    <div className={`nav-item ${activePage === page ? "active" : ""}`} onClick={() => { setActivePage(page); setSelectedMatter(null); }}>
+      <Icon name={icon} size={16} color={activePage === page ? "white" : "rgba(255,255,255,0.6)"} />
+      <span>{label}</span>
+      {badge > 0 && <span className="badge-count">{badge}</span>}
+    </div>
+  );
+
+  // ─── MATTER DETAIL ─────────────────────────────────────────────────────────
+  const MatterDetail = ({ matter }) => {
+    const matterMsgs = (messages[matter.id] || []);
+    const visibleMsgs = showInternal ? matterMsgs : matterMsgs.filter(m => !m.internal);
+    const docs = DOCUMENTS[matter.id] || [];
+    const reqs = DOC_REQUESTS[matter.id] || [];
+    const inv = INVOICES.filter(i => i.matterId === matter.id);
+    const tl = TIMELINE[matter.id] || [];
+
+    return (
+      <div className="fade-in" style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+        {/* Matter header */}
+        <div style={{ background: "var(--white)", borderBottom: "1px solid var(--gray-200)", padding: "16px 24px" }}>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 10 }}>
+            <div>
+              <button className="btn btn-ghost btn-sm" style={{ marginBottom: 6, paddingLeft: 0 }} onClick={() => setSelectedMatter(null)}>
+                <Icon name="arrow_left" size={14} />Back to matters
+              </button>
+              <h1 style={{ fontFamily: "var(--font-serif)", fontSize: 20, color: "var(--navy)", marginBottom: 4 }}>{matter.title}</h1>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 12.5, color: "var(--gray-400)" }}>{matter.ref}</span>
+                <span style={{ color: "var(--gray-300)" }}>·</span>
+                <span style={{ fontSize: 12.5, color: "var(--gray-500)" }}>{matter.practice}</span>
+                <span style={{ color: "var(--gray-300)" }}>·</span>
+                <StatusBadge status={matter.status} />
+                {matter.urgency === "high" && <StatusBadge status="high" />}
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="btn btn-secondary btn-sm" onClick={() => { setVideoCallContact({ name: matter.client, matter: matter.title }); setShowVideoCall(true); }}><Icon name="video" size={14} />Schedule Call</button>
+              <button className="btn btn-primary btn-sm"><Icon name="edit" size={14} />Update Status</button>
+            </div>
+          </div>
+          <div className="tab-bar">
+            {["overview", "messages", "documents", "timeline", "billing"].map(t => (
+              <button key={t} className={`tab ${matterTab === t ? "active" : ""}`} onClick={() => setMatterTab(t)}>
+                {t.charAt(0).toUpperCase() + t.slice(1)}
+                {t === "messages" && matterMsgs.filter(m => !m.read).length > 0 && (
+                  <span className="badge badge-red" style={{ marginLeft: 5, padding: "1px 5px", fontSize: 10 }}>{matterMsgs.filter(m => !m.read).length}</span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="scroll-y" style={{ flex: 1, padding: 24 }}>
+          {/* OVERVIEW */}
+          {matterTab === "overview" && (
+            <div className="fade-in" style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 20 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                <div className="card" style={{ padding: 20 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--gray-500)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Client</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <Avatar name={matter.client} size={44} color="teal" />
+                    <div>
+                      <div style={{ fontSize: 16, fontWeight: 600, color: "var(--gray-900)" }}>{matter.client}</div>
+                      <div style={{ fontSize: 13.5, color: "var(--gray-500)" }}>{matter.clientEmail}</div>
+                    </div>
+                    <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
+                      <button className="btn btn-secondary btn-sm"><Icon name="message" size={13} /></button>
+                      <button className="btn btn-secondary btn-sm"><Icon name="phone" size={13} /></button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="card" style={{ padding: 20 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--gray-500)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Next Steps</div>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div style={{ background: "var(--blue-pale)", border: "1.5px solid var(--blue-pale2)", borderRadius: "var(--radius-md)", padding: 14 }}>
+                      <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--blue)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>👤 Client sees</div>
+                      <p style={{ fontSize: 13.5, color: "var(--gray-700)", lineHeight: 1.6 }}>{matter.nextStep}</p>
+                      <button className="btn btn-sm" style={{ background: "var(--blue)", color: "white", marginTop: 10, fontSize: 12 }}>
+                        <Icon name="cpu" size={12} />Generate Update
+                      </button>
+                    </div>
+                    <div style={{ background: "var(--amber-pale)", border: "1.5px solid #FDE68A", borderRadius: "var(--radius-md)", padding: 14 }}>
+                      <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--amber)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>🔒 Internal only</div>
+                      <p style={{ fontSize: 13.5, color: "var(--gray-700)", lineHeight: 1.6 }}>{matter.nextStepInternal}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="card" style={{ padding: 20 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--gray-500)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Document Progress</div>
+                  {reqs.length > 0 ? (
+                    <>
+                      <div style={{ marginBottom: 10 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, color: "var(--gray-500)", marginBottom: 5 }}>
+                          <span>{reqs.filter(r => r.done).length} of {reqs.length} received</span>
+                          <span style={{ color: reqs.filter(r => !r.done).length > 0 ? "var(--amber)" : "var(--green)" }}>{reqs.filter(r => !r.done).length > 0 ? `${reqs.filter(r => !r.done).length} outstanding` : "All received ✓"}</span>
+                        </div>
+                        <div className="progress-bar"><div className="progress-fill" style={{ width: `${(reqs.filter(r => r.done).length / reqs.length) * 100}%`, background: reqs.filter(r => !r.done).length > 0 ? "var(--amber)" : "var(--green)" }} /></div>
+                      </div>
+                      {reqs.map(req => (
+                        <div key={req.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0", fontSize: 13.5 }}>
+                          <Icon name={req.done ? "check-circle" : "alert-circle"} size={15} color={req.done ? "var(--green)" : "var(--amber)"} />
+                          <span style={{ color: req.done ? "var(--gray-500)" : "var(--gray-700)", textDecoration: req.done ? "line-through" : "none" }}>{req.label}</span>
+                        </div>
+                      ))}
+                    </>
+                  ) : <p style={{ fontSize: 13.5, color: "var(--gray-400)" }}>No document requests for this matter</p>}
+                </div>
+              </div>
+
+              {/* Right column */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                <div className="card" style={{ padding: 18 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--gray-500)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Key Dates</div>
+                  {matter.nextDeadline ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", background: "var(--red-pale)", borderRadius: "var(--radius-sm)", border: "1px solid #FECACA" }}>
+                      <Icon name="clock" size={16} color="var(--red)" />
+                      <span style={{ fontSize: 13.5, color: "#991B1B", fontWeight: 500 }}>{matter.nextDeadline}</span>
+                    </div>
+                  ) : <p style={{ fontSize: 13.5, color: "var(--gray-400)" }}>No upcoming deadlines</p>}
+                  <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
+                    <button className="btn btn-secondary btn-sm" style={{ flex: 1, justifyContent: "center", fontSize: 12 }}><Icon name="plus" size={12} />Add Deadline</button>
+                  </div>
+                </div>
+
+                <div className="card" style={{ padding: 18 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--gray-500)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Billing Summary</div>
+                  {[["Retainer", `$${matter.retainer.toLocaleString()}`], ["Billed", `$${inv.reduce((s,i) => s + i.amount, 0).toLocaleString()}`], ["Collected", `$${matter.paid.toLocaleString()}`], ["Outstanding", `$${inv.filter(i => i.status !== "paid").reduce((s,i) => s + i.amount, 0).toLocaleString()}`]].map(([k, v]) => (
+                    <div key={k} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid var(--gray-100)", fontSize: 13.5 }}>
+                      <span style={{ color: "var(--gray-500)" }}>{k}</span>
+                      <span style={{ fontWeight: 600, color: k === "Outstanding" && inv.filter(i => i.status !== "paid").length > 0 ? "var(--red)" : "var(--gray-800)" }}>{v}</span>
+                    </div>
+                  ))}
+                  <button className="btn btn-primary btn-sm" style={{ width: "100%", justifyContent: "center", marginTop: 12, fontSize: 12 }} onClick={() => setShowInvoiceModal(true)}><Icon name="plus" size={12} />Create Invoice</button>
+                </div>
+
+                <div className="card" style={{ padding: 18 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--gray-500)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>Matter Team</div>
+                  {[{ name: matter.attorney, role: "Lead Attorney", color: "blue" }, { name: "Priya Patel", role: "Paralegal", color: "teal" }].map(m => (
+                    <div key={m.name} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0" }}>
+                      <Avatar name={m.name} size={28} color={m.color} />
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 500, color: "var(--gray-800)" }}>{m.name}</div>
+                        <div style={{ fontSize: 11.5, color: "var(--gray-400)" }}>{m.role}</div>
+                      </div>
+                    </div>
+                  ))}
+                  <button className="btn btn-ghost btn-sm" style={{ width: "100%", justifyContent: "center", marginTop: 6, fontSize: 12 }}><Icon name="plus" size={12} />Add team member</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* MESSAGES */}
+          {matterTab === "messages" && (
+            <div className="fade-in" style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 260px)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, alignItems: "center" }}>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button className={`btn btn-sm ${!showInternal ? "btn-primary" : "btn-secondary"}`} onClick={() => setShowInternal(false)}>Client Thread</button>
+                  <button className={`btn btn-sm ${showInternal ? "btn-primary" : "btn-secondary"}`} onClick={() => setShowInternal(true)}>🔒 Internal Notes</button>
+                </div>
+                {aiTyping && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--purple)" }}>
+                    <div className="ai-typing"><span /><span /><span /></div>
+                    AI is drafting...
+                  </div>
+                )}
+              </div>
+              <div className="card" style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+                <div className="scroll-y" style={{ flex: 1, padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+                  {visibleMsgs.map(msg => (
+                    <div key={msg.id} style={{ display: "flex", flexDirection: "column", alignItems: msg.sender === "attorney" ? "flex-end" : "flex-start", gap: 4 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, paddingLeft: msg.sender === "attorney" ? 0 : 4, paddingRight: msg.sender === "attorney" ? 4 : 0 }}>
+                        {msg.sender !== "attorney" && <Avatar name={msg.name} size={22} color={msg.sender === "staff" ? "amber" : "teal"} />}
+                        <span style={{ fontSize: 12, color: "var(--gray-400)" }}>{msg.name} · {msg.time}</span>
+                        {msg.sender === "attorney" && msg.aiGenerated && <span className="ai-badge"><Icon name="cpu" size={10} color="var(--purple)" />AI</span>}
+                      </div>
+                      <div className={`msg-bubble ${msg.sender === "attorney" ? "sent" : msg.internal ? "internal" : "received"}`}>
+                        {msg.body}
+                      </div>
+                      {msg.sender !== "attorney" && !msg.read && (
+                        <span style={{ fontSize: 11, color: "var(--blue)" }}>● New</span>
+                      )}
+                    </div>
+                  ))}
+                  {aiDraft && (
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+                      <span className="ai-badge"><Icon name="cpu" size={10} color="var(--purple)" />AI Draft — review before sending</span>
+                      <div className="msg-bubble sent" style={{ background: "linear-gradient(135deg, #7C3AED, #2563EB)", opacity: 0.85, border: "2px dashed rgba(255,255,255,0.3)" }}>
+                        {aiDraft}
+                      </div>
+                    </div>
+                  )}
+                  <div ref={msgEndRef} />
+                </div>
+                <div style={{ padding: "10px 14px", borderTop: "1px solid var(--gray-200)" }}>
+                  {showInternal && (
+                    <div style={{ background: "var(--amber-pale)", border: "1px solid #FDE68A", borderRadius: "var(--radius-sm)", padding: "6px 10px", marginBottom: 8, fontSize: 12, color: "#92400E", display: "flex", gap: 6, alignItems: "center" }}>
+                      <Icon name="lock" size={12} color="#D97706" />
+                      Internal note — not visible to client
+                    </div>
+                  )}
+                  {aiDraft ? (
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <button className="btn btn-danger btn-sm" onClick={() => setAiDraft("")}><Icon name="x" size={13} />Dismiss</button>
+                      <button className="btn btn-secondary btn-sm" onClick={() => { setNewMsg(aiDraft); setAiDraft(""); }}><Icon name="edit" size={13} />Edit</button>
+                      <button className="btn btn-primary btn-sm" onClick={sendMessage}><Icon name="send" size={13} />Send as-is</button>
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <textarea className="input textarea" style={{ flex: 1, minHeight: 60, resize: "none", fontSize: 13.5 }} placeholder={showInternal ? "Add an internal note..." : "Write a message to the client..."} value={newMsg} onChange={e => setNewMsg(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }} />
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        <button className="btn btn-purple btn-sm" onClick={generateAIDraft} title="Generate AI Draft"><Icon name="cpu" size={14} /></button>
+                        <button className="btn btn-secondary btn-sm"><Icon name="paperclip" size={14} /></button>
+                        <button className="btn btn-secondary btn-sm"><Icon name="mic" size={14} /></button>
+                        <button className="btn btn-primary btn-sm" onClick={sendMessage}><Icon name="send" size={14} /></button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* DOCUMENTS */}
+          {matterTab === "documents" && (
+            <div className="fade-in">
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
+                <h3 style={{ fontSize: 15, fontWeight: 600, color: "var(--gray-800)" }}>Matter Documents</h3>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button className="btn btn-secondary btn-sm"><Icon name="file" size={13} />Request Documents</button>
+                  <button className="btn btn-primary btn-sm"><Icon name="upload" size={13} />Upload</button>
+                </div>
+              </div>
+              <div style={{ display: "grid", gap: 8 }}>
+                {docs.map(doc => (
+                  <div key={doc.id} className="card card-hover" style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+                    <div style={{ width: 38, height: 38, background: "var(--blue-pale)", borderRadius: "var(--radius-sm)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <Icon name="file" size={18} color="var(--blue)" />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13.5, fontWeight: 500, color: "var(--gray-800)", marginBottom: 3 }}>{doc.name}</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span className="ai-badge"><Icon name="tag" size={10} color="var(--purple)" />{doc.aiLabel}</span>
+                        <span style={{ fontSize: 11.5, color: "var(--gray-400)" }}>{Math.round(doc.confidence * 100)}% confident</span>
+                        <span style={{ fontSize: 11.5, color: "var(--gray-300)" }}>·</span>
+                        <span style={{ fontSize: 11.5, color: "var(--gray-400)" }}>by {doc.by}</span>
+                        <span style={{ fontSize: 11.5, color: "var(--gray-300)" }}>·</span>
+                        <span style={{ fontSize: 11.5, color: "var(--gray-400)" }}>{doc.size}</span>
+                        <span className={`badge ${doc.shared ? "badge-blue" : "badge-gray"}`} style={{ fontSize: 10 }}>{doc.shared ? "Client visible" : "Internal"}</span>
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button className="btn btn-ghost btn-sm"><Icon name="eye" size={14} /></button>
+                      <button className="btn btn-ghost btn-sm"><Icon name="download" size={14} /></button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* TIMELINE */}
+          {matterTab === "timeline" && (
+            <div className="fade-in" style={{ maxWidth: 640 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+                {tl.map((ev, i) => (
+                  <div key={ev.id} className="timeline-item" style={{ paddingBottom: i < tl.length - 1 ? 22 : 0 }}>
+                    <div className="timeline-dot" style={{ background: ev.color === "blue" ? "var(--blue-pale2)" : ev.color === "green" ? "var(--green-pale)" : ev.color === "purple" ? "var(--purple-pale)" : ev.color === "teal" ? "var(--teal-pale)" : "var(--gray-100)" }}>
+                      <Icon name={ev.icon} size={14} color={ev.color === "blue" ? "var(--blue)" : ev.color === "green" ? "var(--green)" : ev.color === "purple" ? "var(--purple)" : ev.color === "teal" ? "var(--teal)" : "var(--gray-500)"} />
+                    </div>
+                    <div style={{ paddingTop: 7, flex: 1 }}>
+                      <div style={{ fontSize: 14, color: "var(--gray-800)", lineHeight: 1.55, marginBottom: 2 }}>{ev.text}</div>
+                      <div style={{ fontSize: 12, color: "var(--gray-400)" }}>{ev.date}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* BILLING */}
+          {matterTab === "billing" && (
+            <div className="fade-in">
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
+                <h3 style={{ fontSize: 15, fontWeight: 600, color: "var(--gray-800)" }}>Invoices & Payments</h3>
+                <button className="btn btn-primary btn-sm" onClick={() => setShowInvoiceModal(true)}><Icon name="plus" size={13} />New Invoice</button>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {inv.map(invoice => (
+                  <div key={invoice.id} className="card" style={{ padding: "14px 18px", display: "flex", alignItems: "center", gap: 14 }}>
+                    <div style={{ width: 40, height: 40, background: invoice.status === "paid" ? "var(--green-pale)" : invoice.status === "overdue" ? "var(--red-pale)" : "var(--blue-pale)", borderRadius: "var(--radius-sm)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Icon name="dollar" size={18} color={invoice.status === "paid" ? "var(--green)" : invoice.status === "overdue" ? "var(--red)" : "var(--blue)"} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 14, fontWeight: 500, color: "var(--gray-800)", marginBottom: 2 }}>{invoice.desc}</div>
+                      <div style={{ fontSize: 12.5, color: "var(--gray-400)" }}>{invoice.number} · Created {invoice.date} · Due {invoice.due}</div>
+                    </div>
+                    <div style={{ textAlign: "right", marginRight: 12 }}>
+                      <div style={{ fontSize: 16, fontWeight: 700, color: "var(--gray-900)" }}>${invoice.amount.toLocaleString()}</div>
+                    </div>
+                    <StatusBadge status={invoice.status} />
+                    {invoice.status !== "paid" && <button className="btn btn-secondary btn-sm"><Icon name="send" size={13} />Remind</button>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   // ─── MAIN LAYOUT ───────────────────────────────────────────────────────────
   return (
     <div style={{ display: "flex", height: "100vh", overflow: "hidden", fontFamily: "var(--font-sans)" }}>
@@ -2051,11 +1670,79 @@ export default function CounselBridge() {
       )}
 
       {/* New Matter Modal */}
-      {showUploadModal && <DocumentUploadModal matters={matters} onClose={() => setShowUploadModal(false)} onUploaded={(docs) => { setMatters(prev => prev.map(m => m.id === docs[0]?.matterId ? { ...m, documents: [...(m.documents||[]), ...docs] } : m)); setShowUploadModal(false); }} />}
-      {showNewMatterModal && <NewMatterModal onClose={() => setShowNewMatterModal(false)} onCreated={(matter) => { setMatters(prev => [...prev, normalizeMatter(matter)]); setShowNewMatterModal(false); setActivePage("matters"); }} currentUser={currentUser} />}
+      {showNewMatterModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(15,34,64,0.6)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }} onClick={() => setShowNewMatterModal(false)}>
+          <div className="card fade-in" style={{ width: 560, maxHeight: "85vh", overflow: "auto", padding: 32 }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <h3 style={{ fontSize: 19, fontWeight: 700, color: "var(--navy)", fontFamily: "var(--font-serif)" }}>Open New Matter</h3>
+              <button className="btn btn-ghost btn-sm" onClick={() => setShowNewMatterModal(false)}><Icon name="x" size={16} /></button>
+            </div>
+            <p style={{ fontSize: 13.5, color: "var(--gray-500)", marginBottom: 24 }}>Fill in the details below. A client portal invitation will be sent automatically.</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div><label>Client First Name</label><input className="input" placeholder="Sarah" /></div>
+                <div><label>Client Last Name</label><input className="input" placeholder="Johnson" /></div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div><label>Client Email</label><input className="input" type="email" placeholder="client@email.com" /></div>
+                <div><label>Client Phone</label><input className="input" placeholder="(415) 555-0100" /></div>
+              </div>
+              <div><label>Matter Title</label><input className="input" placeholder="e.g. Johnson Divorce Proceeding" /></div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div><label>Practice Area</label>
+                  <select className="input select">
+                    <option>Family Law</option><option>Estate Planning</option><option>Litigation</option>
+                    <option>Corporate</option><option>Personal Injury</option><option>Real Estate</option><option>Criminal Defense</option>
+                  </select>
+                </div>
+                <div><label>Lead Attorney</label>
+                  <select className="input select"><option>Alex Rivera</option><option>Priya Patel (Paralegal)</option></select>
+                </div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div><label>Retainer Amount</label><input className="input" placeholder="$0.00" /></div>
+                <div><label>Billing Type</label>
+                  <select className="input select"><option>Hourly</option><option>Flat fee</option><option>Contingency</option></select>
+                </div>
+              </div>
+              <div><label>Initial Notes (internal)</label><textarea className="input textarea" placeholder="Brief description of the matter and client situation..." /></div>
+              <div style={{ background: "var(--blue-pale)", border: "1px solid var(--blue-pale2)", borderRadius: "var(--radius-sm)", padding: "10px 14px", fontSize: 13, color: "var(--blue)" }}>
+                <Icon name="mail" size={13} color="var(--blue)" style={{ display: "inline", marginRight: 6 }} />
+                A portal invitation email will be sent to the client automatically upon saving.
+              </div>
+              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", paddingTop: 4 }}>
+                <button className="btn btn-secondary" onClick={() => setShowNewMatterModal(false)}>Cancel</button>
+                <button className="btn btn-primary" onClick={() => { setShowNewMatterModal(false); setActivePage("matters"); }}><Icon name="briefcase" size={14} />Open Matter & Invite Client</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Invoice Modal */}
-      {showInvoiceModal && <InvoiceModal matters={matters} onClose={() => setShowInvoiceModal(false)} onCreated={(inv) => { setInvoices(prev => [...prev, ...normalizeInvoices([inv])]); setShowInvoiceModal(false); }} />}
+      {showInvoiceModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(15,34,64,0.6)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }} onClick={() => setShowInvoiceModal(false)}>
+          <div className="card fade-in" style={{ width: 480, padding: 28 }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <h3 style={{ fontSize: 17, fontWeight: 700, color: "var(--navy)" }}>Create Invoice</h3>
+              <button className="btn btn-ghost btn-sm" onClick={() => setShowInvoiceModal(false)}><Icon name="x" size={16} /></button>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div><label>Matter</label><select className="input select"><option>Johnson Divorce Proceeding</option></select></div>
+              <div><label>Description</label><input className="input" defaultValue="Legal services — March 2024" /></div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div><label>Amount</label><input className="input" defaultValue="1,800.00" /></div>
+                <div><label>Due Date</label><input className="input" type="date" defaultValue="2024-04-01" /></div>
+              </div>
+              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 4 }}>
+                <button className="btn btn-secondary" onClick={() => setShowInvoiceModal(false)}>Cancel</button>
+                <button className="btn btn-secondary">Save Draft</button>
+                <button className="btn btn-primary" onClick={() => setShowInvoiceModal(false)}><Icon name="send" size={14} />Send to Client</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* SIDEBAR */}
       <div style={{ width: 224, background: "linear-gradient(180deg, var(--navy) 0%, #162d4a 100%)", display: "flex", flexDirection: "column", padding: "0 10px 16px", flexShrink: 0 }}>
@@ -2063,7 +1750,7 @@ export default function CounselBridge() {
         <div style={{ padding: "18px 10px 16px", borderBottom: "1px solid rgba(255,255,255,0.08)", marginBottom: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 32, height: 32, background: "var(--blue)", borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              ><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="3" x2="12" y2="20"/><line x1="3" y1="8" x2="21" y2="8"/><path d="M5 8c0 3 2 5 4 5s4-2 4-5"/><path d="M15 8c0 3 2 5 4 5s4-2 4-5"/><line x1="7" y1="20" x2="17" y2="20"/></svg>
+              <span style={{ fontSize: 17 }}>⚖️</span>
             </div>
             <span style={{ fontFamily: "var(--font-serif)", fontSize: 20, color: "white", letterSpacing: "-0.3px" }}>CounselBridge</span>
           </div>
@@ -2072,18 +1759,18 @@ export default function CounselBridge() {
 
         {/* Nav */}
         <div style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1 }}>
-          <NavItem icon="home" label="Dashboard" page="dashboard" activePage={activePage} setActivePage={setActivePage} setSelectedMatter={setSelectedMatter} />
-          <NavItem icon="briefcase" label="Matters" page="matters" badge={matters.filter(m => m.unread > 0).length} activePage={activePage} setActivePage={setActivePage} setSelectedMatter={setSelectedMatter} />
-          <NavItem icon="inbox" label="Inbox" page="inbox" badge={5} activePage={activePage} setActivePage={setActivePage} setSelectedMatter={setSelectedMatter} />
-          <NavItem icon="calendar" label="Calendar" page="calendar" activePage={activePage} setActivePage={setActivePage} setSelectedMatter={setSelectedMatter} />
-          <NavItem icon="cpu" label="AI Queue" page="ai-queue" badge={aiQueue.length} activePage={activePage} setActivePage={setActivePage} setSelectedMatter={setSelectedMatter} />
-          <NavItem icon="file" label="Documents" page="documents" activePage={activePage} setActivePage={setActivePage} setSelectedMatter={setSelectedMatter} />
-          <NavItem icon="dollar" label="Billing" page="billing" activePage={activePage} setActivePage={setActivePage} setSelectedMatter={setSelectedMatter} />
-          <NavItem icon="users" label="Team" page="team" activePage={activePage} setActivePage={setActivePage} setSelectedMatter={setSelectedMatter} />
+          <NavItem icon="home" label="Dashboard" page="dashboard" />
+          <NavItem icon="briefcase" label="Matters" page="matters" badge={matters.filter(m => m.unread > 0).length} />
+          <NavItem icon="inbox" label="Inbox" page="inbox" badge={5} />
+          <NavItem icon="calendar" label="Calendar" page="calendar" />
+          <NavItem icon="cpu" label="AI Queue" page="ai-queue" badge={aiQueue.length} />
+          <NavItem icon="file" label="Documents" page="documents" />
+          <NavItem icon="dollar" label="Billing" page="billing" />
+          <NavItem icon="users" label="Team" page="team" />
           <div style={{ flex: 1 }} />
           <div style={{ height: 1, background: "rgba(255,255,255,0.08)", margin: "8px 2px" }} />
-          <NavItem icon="settings" label="Settings" page="settings" activePage={activePage} setActivePage={setActivePage} setSelectedMatter={setSelectedMatter} />
-          <div className="nav-item" onClick={handleLogout} style={{ color: "rgba(255,255,255,0.5)" }}>
+          <NavItem icon="settings" label="Settings" page="settings" />
+          <div className="nav-item" onClick={() => setView("login")} style={{ color: "rgba(255,255,255,0.5)" }}>
             <Icon name="log-out" size={16} color="rgba(255,255,255,0.5)" />
             <span>Sign Out</span>
           </div>
@@ -2106,20 +1793,14 @@ export default function CounselBridge() {
             </button>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, paddingLeft: 8, borderLeft: "1px solid var(--gray-200)" }}>
-            <Avatar name={currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "User"} size={30} color="blue" />
+            <Avatar name="Alex Rivera" size={30} color="blue" />
             <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--gray-800)", lineHeight: 1.2 }}>{currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "Attorney"}</div>
-              <div style={{ fontSize: 11, color: "var(--gray-400)" }}>{currentUser?.role || "Attorney"} · {currentFirm?.name || "Your Firm"}</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--gray-800)", lineHeight: 1.2 }}>Alex Rivera</div>
+              <div style={{ fontSize: 11, color: "var(--gray-400)" }}>Attorney · Pro Plan</div>
             </div>
           </div>
           <button className="btn btn-sm" style={{ background: "rgba(37,99,235,0.1)", color: "var(--blue)", border: "1px solid var(--blue-pale2)" }} onClick={() => setView("client")}>
             👤 Client View
-          </button>
-          <button className="btn btn-sm btn-primary" style={{ gap: 6 }} onClick={() => {
-            setVideoCallContact({ name: "Client", matter: "Ad-hoc consultation", myName: currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "You" });
-            setShowVideoCall(true);
-          }}>
-            <Icon name="video" size={13} color="white" /> Start Call
           </button>
         </div>
 
@@ -2127,7 +1808,7 @@ export default function CounselBridge() {
         <div className="scroll-y" style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
           {/* MATTER DETAIL */}
           {selectedMatter && activePage === "matters" && (
-            <MatterDetail matter={selectedMatter} messages={messages} showInternal={showInternal} setShowInternal={setShowInternal} invoices={invoices} setVideoCallContact={setVideoCallContact} setShowVideoCall={setShowVideoCall} currentUser={currentUser} setShowInvoiceModal={setShowInvoiceModal} setSelectedMatter={setSelectedMatter} matterTab={matterTab} setMatterTab={setMatterTab} aiDraft={aiDraft} setAiDraft={setAiDraft} newMsg={newMsg} setNewMsg={setNewMsg} generateAIDraft={generateAIDraft} sendMessage={sendMessage} aiTyping={aiTyping} setShowAIModal={setShowAIModal} setShowUploadModal={setShowUploadModal} msgEndRef={msgEndRef} />
+            <MatterDetail matter={selectedMatter} />
           )}
 
           {/* DASHBOARD */}
@@ -2135,8 +1816,8 @@ export default function CounselBridge() {
             <div className="scroll-y" style={{ flex: 1, padding: 24 }} >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
                 <div>
-                  <h1 style={{ fontFamily: "var(--font-serif)", fontSize: 24, color: "var(--navy)", marginBottom: 2 }}>Good morning, {currentUser?.firstName || "there"}</h1>
-                  <p style={{ fontSize: 13.5, color: "var(--gray-500)" }}>{new Date().toLocaleDateString("en-US", {weekday:"long",month:"long",day:"numeric",year:"numeric"})} · {matters.filter(m => m.status === "active").length} active matters</p>
+                  <h1 style={{ fontFamily: "var(--font-serif)", fontSize: 24, color: "var(--navy)", marginBottom: 2 }}>Good morning, Alex</h1>
+                  <p style={{ fontSize: 13.5, color: "var(--gray-500)" }}>Tuesday, March 3, 2026 · {matters.filter(m => m.status === "active").length} active matters</p>
                 </div>
                 <button className="btn btn-primary" onClick={() => setShowNewMatterModal(true)}><Icon name="plus" size={15} />New Matter</button>
               </div>
@@ -2144,9 +1825,9 @@ export default function CounselBridge() {
               {/* KPI row */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 20 }}>
                 {[
-                  { label: "Active Matters", value: matters.filter(m => m.status === "active").length, icon: "briefcase", color: "blue", sub: `${matters.length} total` },
-                  { label: "Unread Messages", value: matters.reduce((s,m) => s + (m.unread||0), 0), icon: "message", color: "teal", sub: `Across ${matters.filter(m=>m.unread>0).length} matters` },
-                  { label: "Pending Invoices", value: "$" + invoices.filter(i => i.status !== "paid").reduce((s,i) => s+i.amount,0).toLocaleString(), icon: "dollar", color: "amber", sub: `${invoices.filter(i=>i.status==="overdue").length} overdue` },
+                  { label: "Active Matters", value: matters.filter(m => m.status === "active").length, icon: "briefcase", color: "blue", sub: "+2 this week" },
+                  { label: "Unread Messages", value: matters.reduce((s,m) => s + m.unread, 0), icon: "message", color: "teal", sub: "Across 3 matters" },
+                  { label: "Pending Invoices", value: "$" + INVOICES.filter(i => i.status !== "paid").reduce((s,i) => s+i.amount,0).toLocaleString(), icon: "dollar", color: "amber", sub: "2 overdue" },
                   { label: "AI Queue", value: aiQueue.length, icon: "cpu", color: "purple", sub: "Needs your approval" },
                 ].map(k => (
                   <div key={k.label} className="card" style={{ padding: "16px 18px", cursor: "pointer" }} onClick={() => { if(k.label === "AI Queue") setActivePage("ai-queue"); }}>
@@ -2171,20 +1852,12 @@ export default function CounselBridge() {
                         <span className="ai-badge"><Icon name="cpu" size={11} color="var(--purple)" />Daily Digest</span>
                         <span style={{ fontSize: 12, color: "var(--gray-500)" }}>Generated by AI · 7:00 AM</span>
                       </div>
-                      <button className="btn btn-ghost btn-sm" onClick={async () => {
-                        setDigestExpanded(!digestExpanded);
-                        if (!digestText && !digestExpanded) {
-                          try {
-                            const res = await AIAPI.dailyDigest();
-                            setDigestText(res?.digest || "No digest available.");
-                          } catch { setDigestText("Unable to load digest. Please try again."); }
-                        }
-                      }}>
+                      <button className="btn btn-ghost btn-sm" onClick={() => setDigestExpanded(!digestExpanded)}>
                         <Icon name={digestExpanded ? "chevron_down" : "chevron_right"} size={14} />
                       </button>
                     </div>
                     <div style={{ fontSize: 14, color: "var(--gray-700)", lineHeight: 1.7, whiteSpace: "pre-line" }}>
-                      {digestExpanded ? (digestText || "Loading your daily digest...") : (digestText || "").split("\n")[0] || "Click 'Expand' to generate your AI daily briefing"}
+                      {digestExpanded ? DIGEST_TEXT : DIGEST_TEXT.split("\n")[0]}
                       {!digestExpanded && <span style={{ color: "var(--blue)", cursor: "pointer", fontSize: 13 }} onClick={() => setDigestExpanded(true)}> · See full digest</span>}
                     </div>
                   </div>
@@ -2251,7 +1924,7 @@ export default function CounselBridge() {
                   <div className="card" style={{ padding: 18 }}>
                     <div style={{ fontSize: 14, fontWeight: 600, color: "var(--gray-800)", marginBottom: 12 }}>Upcoming</div>
                     {[
-                      { label: `Video Call — ${matters[0]?.client || "Client"}`, date: "Today 2:00 PM", icon: "video", color: "blue", onClick: () => { setVideoCallContact({ name: "Client", matter: "Johnson Divorce Proceeding", myName: currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "You" }); setShowVideoCall(true); } },
+                      { label: "Video Call — Sarah Johnson", date: "Today 2:00 PM", icon: "video", color: "blue", onClick: () => { setVideoCallContact({ name: "Sarah Johnson", matter: "Johnson Divorce Proceeding" }); setShowVideoCall(true); } },
                       { label: "Court Date — Amy Chen", date: "Apr 3, 9:00 AM", icon: "briefcase", color: "red" },
                       { label: "Document deadline — Johnson", date: "Mar 15", icon: "clock", color: "amber" },
                     ].map((ev, i) => (
@@ -2386,7 +2059,7 @@ export default function CounselBridge() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
                 <div>
                   <h1 style={{ fontFamily: "var(--font-serif)", fontSize: 22, color: "var(--navy)", marginBottom: 2 }}>Billing</h1>
-                  <p style={{ fontSize: 13.5, color: "var(--gray-500)" }}>March 2026 · {currentFirm?.name || "Your Firm"}</p>
+                  <p style={{ fontSize: 13.5, color: "var(--gray-500)" }}>March 2026 · Rivera & Associates</p>
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button className="btn btn-secondary btn-sm"><Icon name="download" size={14} />Export</button>
@@ -2428,9 +2101,7 @@ export default function CounselBridge() {
                   </div>
 
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    {invoices.length === 0 ? (
-                      <div className="empty-state"><Icon name="dollar" size={32} /><p>No invoices yet. Create your first invoice above.</p></div>
-                    ) : invoices.map(inv => {
+                    {INVOICES.map(inv => {
                       const matter = matters.find(m => m.id === inv.matterId);
                       return (
                         <div key={inv.id} className="card" style={{ padding: "14px 20px", display: "flex", alignItems: "center", gap: 14 }}>
@@ -2442,7 +2113,7 @@ export default function CounselBridge() {
                             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                               <span style={{ fontSize: 12.5, color: "var(--gray-400)" }}>{inv.number}</span>
                               <span style={{ color: "var(--gray-300)" }}>·</span>
-                              <span style={{ fontSize: 12.5, color: "var(--gray-500)" }}>{matter?.client || "—"}</span>
+                              <span style={{ fontSize: 12.5, color: "var(--gray-500)" }}>{matter?.client}</span>
                               <span style={{ color: "var(--gray-300)" }}>·</span>
                               <span style={{ fontSize: 12.5, color: "var(--gray-400)" }}>Due {inv.due}</span>
                               {inv.status === "overdue" && <span style={{ fontSize: 12, color: "var(--red)", fontWeight: 600 }}>OVERDUE</span>}
@@ -2451,7 +2122,7 @@ export default function CounselBridge() {
                           <div style={{ fontSize: 18, fontWeight: 700, color: "var(--gray-900)" }}>${inv.amount.toLocaleString()}</div>
                           <StatusBadge status={inv.status} />
                           <div style={{ display: "flex", gap: 6 }}>
-                            {inv.status !== "paid" && <button className="btn btn-secondary btn-sm" onClick={() => InvoicesAPI.remind(inv.id).catch(console.error)}><Icon name="send" size={12} />Remind</button>}
+                            {inv.status !== "paid" && <button className="btn btn-secondary btn-sm"><Icon name="send" size={12} />Remind</button>}
                             <button className="btn btn-ghost btn-sm"><Icon name="eye" size={13} /></button>
                           </div>
                         </div>
@@ -2516,7 +2187,7 @@ export default function CounselBridge() {
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button className="btn btn-secondary btn-sm"><Icon name="file" size={13} />Request Documents</button>
-                  <button className="btn btn-primary" onClick={() => setShowUploadModal(true)}><Icon name="upload" size={15} />Upload</button>
+                  <button className="btn btn-primary"><Icon name="upload" size={15} />Upload</button>
                 </div>
               </div>
 
@@ -2525,8 +2196,11 @@ export default function CounselBridge() {
                 <div>
                   <div style={{ fontSize: 12, fontWeight: 700, color: "var(--gray-400)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, padding: "0 4px" }}>Matters</div>
                   {[
-                    { label: "All Documents", count: matters.reduce((s,m)=>(m.documents||[]).length+s,0), icon: "layers" },
-                    ...matters.map(m => ({ label: m.title, count: (m.documents||[]).length, icon: "folder" }))
+                    { label: "All Documents", count: 12, icon: "layers" },
+                    { label: "Johnson Divorce", count: 5, icon: "folder" },
+                    { label: "Martinez Estate", count: 3, icon: "folder" },
+                    { label: "Chen v. Realty", count: 4, icon: "folder" },
+                    { label: "Rodriguez Injury", count: 0, icon: "folder" },
                   ].map((folder, i) => (
                     <div key={folder.label} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: "var(--radius-sm)", cursor: "pointer", background: i === 0 ? "var(--blue-pale)" : "transparent", marginBottom: 2 }}
                       onMouseEnter={e => { if(i !== 0) e.currentTarget.style.background = "var(--gray-100)"; }}
@@ -2583,7 +2257,13 @@ export default function CounselBridge() {
                     <button className="btn btn-sm" style={{ background: "var(--amber)", color: "white", fontSize: 11.5, marginLeft: "auto" }}>View Requests</button>
                   </div>
 
-                  {(matters.flatMap(m => m.documents || []).length === 0 ? [] : matters.flatMap(m => (m.documents || []).map(d => ({ ...d, matterTitle: m.title })))).map((doc, i) => (
+                  {[
+                    ...Object.values(DOCUMENTS).flat(),
+                    { id: 10, name: "Martinez_Trust_v2.docx", type: "Contract", size: "0.2 MB", uploaded: "Mar 8", by: "Alex Rivera", aiLabel: "Legal Agreement", confidence: 0.94, shared: false },
+                    { id: 11, name: "Chen_Evidence_Photos.zip", type: "Evidence", size: "14.2 MB", uploaded: "Mar 6", by: "Alex Rivera", aiLabel: "Evidence", confidence: 0.87, shared: false },
+                    { id: 12, name: "Rodriguez_Medical_Records.pdf", type: "Medical", size: "3.8 MB", uploaded: "Mar 9", by: "Priya Patel", aiLabel: "Medical Record", confidence: 0.99, shared: false },
+                    { id: 13, name: "Johnson_Settlement_Proposal.pdf", type: "Internal", size: "0.6 MB", uploaded: "Feb 29", by: "Alex Rivera", aiLabel: "Settlement Document", confidence: 0.91, shared: false },
+                  ].map((doc, i) => (
                     <div key={doc.id + "-" + i} className="card card-hover" style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
                       <div style={{ width: 40, height: 40, background: doc.aiLabel === "Financial Statement" || doc.aiLabel === "Tax Document" ? "var(--green-pale)" : doc.aiLabel === "Court Filing" ? "var(--red-pale)" : doc.aiLabel === "Medical Record" ? "var(--purple-pale)" : "var(--blue-pale)", borderRadius: "var(--radius-sm)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                         <Icon name="file" size={17} color={doc.aiLabel === "Financial Statement" || doc.aiLabel === "Tax Document" ? "var(--green)" : doc.aiLabel === "Court Filing" ? "var(--red)" : doc.aiLabel === "Medical Record" ? "var(--purple)" : "var(--blue)"} />
@@ -2661,22 +2341,24 @@ export default function CounselBridge() {
                 ))}
               </div>
 
-              {/* All messages section */}
+              {/* Earlier section */}
               <div style={{ marginBottom: 8 }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--gray-400)", textTransform: "uppercase", letterSpacing: "0.06em" }}>All Messages</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--gray-400)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Earlier today</span>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                {matters.flatMap(m => (messages[m.id] || []).filter(msg => msg.read).map(msg => ({ ...msg, matter: m }))).length === 0 ? (
-                  <div className="empty-state"><Icon name="message" size={32} /><p>No messages yet. Messages will appear here once clients start communicating.</p></div>
-                ) : matters.flatMap(m => (messages[m.id] || []).filter(msg => msg.read).map(msg => ({ ...msg, matter: m }))).map((msg, i) => (
+                {[
+                  { name: "Carlos Martinez", matter: "Martinez Estate Planning", body: "I've reviewed the trust document — looks great. When do we sign?", time: "8:02 AM", practice: "Estate Planning" },
+                  { name: "Priya Patel", matter: "Chen v. Realty Group", body: "Internal: Filed the exhibit list. Motion in limine draft ready for your review.", time: "7:48 AM", practice: "Litigation", internal: true },
+                  { name: "Ji-soo Park", matter: "Park Business Acquisition", body: "Hi, I submitted a new inquiry — wanted to follow up on timing for the initial consultation.", time: "7:15 AM", practice: "Corporate" },
+                ].map((msg, i) => (
                   <div key={i} className="card card-hover" style={{ padding: "14px 18px", display: "flex", gap: 12, alignItems: "center", borderLeft: msg.internal ? "3px solid var(--amber)" : "3px solid var(--gray-200)" }}
-                    onClick={() => { setSelectedMatter(msg.matter); setActivePage("matters"); setMatterTab("messages"); }}>
+                    onClick={() => { const m = matters.find(x => x.title === msg.matter); if(m){ setSelectedMatter(m); setActivePage("matters"); setMatterTab("messages"); } }}>
                     <Avatar name={msg.name} size={40} color={msg.internal ? "amber" : "blue"} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
                         <span style={{ fontSize: 13.5, fontWeight: 600, color: "var(--gray-800)" }}>{msg.name}</span>
                         <span style={{ color: "var(--gray-300)" }}>·</span>
-                        <span style={{ fontSize: 13, color: "var(--gray-500)" }}>{msg.matter?.title}</span>
+                        <span style={{ fontSize: 13, color: "var(--gray-500)" }}>{msg.matter}</span>
                         {msg.internal && <span className="badge badge-amber" style={{ fontSize: 10 }}>Internal</span>}
                       </div>
                       <div style={{ fontSize: 13.5, color: "var(--gray-500)", display: "-webkit-box", WebkitLineClamp: 1, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{msg.body}</div>
@@ -2699,7 +2381,7 @@ export default function CounselBridge() {
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                   <button className="btn btn-secondary btn-sm"><Icon name="chevron_left" size={14} /></button>
                   <button className="btn btn-secondary btn-sm"><Icon name="chevron_right" size={14} /></button>
-                  <button className="btn btn-primary btn-sm" onClick={() => { setVideoCallContact({ name: selectedMatter?.client || "Client", matter: "Consultation", myName: currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "You" }); setShowVideoCall(true); }}><Icon name="plus" size={14} />Schedule Meeting</button>
+                  <button className="btn btn-primary btn-sm" onClick={() => { setVideoCallContact({ name: "Sarah Johnson", matter: "Consultation" }); setShowVideoCall(true); }}><Icon name="plus" size={14} />Schedule Meeting</button>
                 </div>
               </div>
 
@@ -2755,7 +2437,7 @@ export default function CounselBridge() {
                     {[
                       { time: "9:00 AM", label: "Review Chen exhibits", type: "briefcase", color: "var(--gray-400)", matter: "Chen v. Realty" },
                       { time: "11:30 AM", label: "Team standup", type: "users", color: "var(--purple)", matter: "All matters" },
-                      { time: "2:00 PM", label: `Video call — ${matters[0]?.client || "Client"}`, type: "video", color: "var(--blue)", matter: matters[0]?.title || "Matter", onClick: () => { setVideoCallContact({ name: "Client", matter: "Johnson Divorce Proceeding", myName: currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "You" }); setShowVideoCall(true); } },
+                      { time: "2:00 PM", label: "Video call — Sarah Johnson", type: "video", color: "var(--blue)", matter: "Johnson Divorce", onClick: () => { setVideoCallContact({ name: "Sarah Johnson", matter: "Johnson Divorce Proceeding" }); setShowVideoCall(true); } },
                       { time: "4:00 PM", label: "Draft motion in limine", type: "file", color: "var(--gray-400)", matter: "Chen v. Realty" },
                     ].map((ev, i) => (
                       <div key={i} onClick={ev.onClick} style={{ display: "flex", gap: 10, padding: "9px 0", borderBottom: i < 3 ? "1px solid var(--gray-100)" : "none", alignItems: "center", cursor: ev.onClick ? "pointer" : "default", borderRadius: ev.onClick ? "var(--radius-sm)" : 0 }}>
@@ -2823,7 +2505,7 @@ export default function CounselBridge() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
                 <div>
                   <h1 style={{ fontFamily: "var(--font-serif)", fontSize: 22, color: "var(--navy)", marginBottom: 2 }}>Team</h1>
-                  <p style={{ fontSize: 13.5, color: "var(--gray-500)" }}>{currentFirm?.name || "Your Firm"} · 3 members · Pro Plan</p>
+                  <p style={{ fontSize: 13.5, color: "var(--gray-500)" }}>Rivera & Associates · 3 members · Pro Plan</p>
                 </div>
                 <button className="btn btn-primary"><Icon name="plus" size={15} />Invite Member</button>
               </div>
@@ -2851,7 +2533,7 @@ export default function CounselBridge() {
               {/* Members */}
               <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 28 }}>
                 {[
-                  { name: `${currentUser ? currentUser.firstName + " " + currentUser.lastName : "Attorney"}`, role: "Attorney · Managing Partner", color: "blue", matters: 5, email: currentUser?.email || "attorney@yourfirm.com", bar: currentUser?.barNumber || "—", status: "online", tasks: 3, responseTime: "1.8h" },
+                  { name: "Alex Rivera", role: "Attorney · Managing Partner", color: "blue", matters: 5, email: "alex@riveralaw.com", bar: "CA Bar #294812", status: "online", tasks: 3, responseTime: "1.8h" },
                   { name: "Priya Patel", role: "Paralegal", color: "teal", matters: 5, email: "priya@riveralaw.com", bar: null, status: "online", tasks: 6, responseTime: "0.9h" },
                   { name: "Jordan Kim", role: "Legal Admin", color: "purple", matters: 0, email: "jordan@riveralaw.com", bar: null, status: "away", tasks: 5, responseTime: "3.2h" },
                 ].map(member => (
@@ -2892,19 +2574,19 @@ export default function CounselBridge() {
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>
                 {[
                   { col: "To Do", color: "var(--gray-400)", items: [
-                    { task: "Review motion in limine draft", matter: "Chen v. Realty", assignee: `${currentUser ? currentUser.firstName + " " + currentUser.lastName : "Attorney"}`, due: "Mar 28", priority: "high" },
+                    { task: "Review motion in limine draft", matter: "Chen v. Realty", assignee: "Alex Rivera", due: "Mar 28", priority: "high" },
                     { task: "Send retainer agreement to Park", matter: "Park Acquisition", assignee: "Priya Patel", due: "Mar 5", priority: "medium" },
                     { task: "Update FL-150 with new figures", matter: "Johnson Divorce", assignee: "Priya Patel", due: "Mar 12", priority: "high" },
                   ]},
                   { col: "In Progress", color: "var(--blue)", items: [
-                    { task: "Prepare deposition exhibits", matter: "Chen v. Realty", assignee: `${currentUser ? currentUser.firstName + " " + currentUser.lastName : "Attorney"}`, due: "Mar 20", priority: "high" },
+                    { task: "Prepare deposition exhibits", matter: "Chen v. Realty", assignee: "Alex Rivera", due: "Mar 20", priority: "high" },
                     { task: "Follow up on bank statements", matter: "Johnson Divorce", assignee: "Priya Patel", due: "Mar 10", priority: "medium" },
-                    { task: "Draft trust schedule A", matter: "Martinez Estate", assignee: `${currentUser ? currentUser.firstName + " " + currentUser.lastName : "Attorney"}`, due: "Mar 18", priority: "low" },
+                    { task: "Draft trust schedule A", matter: "Martinez Estate", assignee: "Alex Rivera", due: "Mar 18", priority: "low" },
                   ]},
                   { col: "Done", color: "var(--green)", items: [
                     { task: "Open matter file", matter: "Park Acquisition", assignee: "Jordan Kim", due: "Mar 2", priority: "low" },
                     { task: "Send portal invite to Sarah Johnson", matter: "Johnson Divorce", assignee: "Jordan Kim", due: "Feb 27", priority: "medium" },
-                    { task: "Conflict check — Park", matter: "Park Acquisition", assignee: `${currentUser ? currentUser.firstName + " " + currentUser.lastName : "Attorney"}`, due: "Mar 1", priority: "high" },
+                    { task: "Conflict check — Park", matter: "Park Acquisition", assignee: "Alex Rivera", due: "Mar 1", priority: "high" },
                   ]},
                 ].map(col => (
                   <div key={col.col}>
@@ -2920,7 +2602,7 @@ export default function CounselBridge() {
                           <div style={{ fontSize: 12, color: "var(--gray-400)", marginBottom: 8 }}>{item.matter}</div>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                              <Avatar name={item.assignee} size={20} color={item.assignee === `${currentUser ? currentUser.firstName + " " + currentUser.lastName : "Attorney"}` ? "blue" : item.assignee === "Priya Patel" ? "teal" : "purple"} />
+                              <Avatar name={item.assignee} size={20} color={item.assignee === "Alex Rivera" ? "blue" : item.assignee === "Priya Patel" ? "teal" : "purple"} />
                               <span style={{ fontSize: 11.5, color: "var(--gray-500)" }}>{item.assignee.split(" ")[0]}</span>
                             </div>
                             <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
@@ -2972,16 +2654,16 @@ export default function CounselBridge() {
                   <div className="card" style={{ padding: 24 }}>
                     <div style={{ fontSize: 15, fontWeight: 700, color: "var(--gray-900)", marginBottom: 18 }}>Firm Profile</div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
-                      <div><label>Firm Name</label><input className="input" defaultValue={currentFirm?.name || "Your Firm"} /></div>
-                      <div><label>Portal URL</label><input className="input" defaultValue={`${currentFirm?.slug || "yourfirm"}.counselbridge.io`} /></div>
-                      <div><label>Practice Area(s)</label><input className="input" defaultValue={currentFirm?.practiceAreas || ""} /></div>
-                      <div><label>Firm Phone</label><input className="input" defaultValue={currentFirm?.phone || ""} /></div>
-                      <div><label>State Bar Number</label><input className="input" defaultValue={currentUser?.barNumber || ""} /></div>
-                      <div><label>Jurisdiction</label><input className="input" defaultValue={currentFirm?.jurisdiction || ""} /></div>
+                      <div><label>Firm Name</label><input className="input" defaultValue="Rivera & Associates" /></div>
+                      <div><label>Portal URL</label><input className="input" defaultValue="rivera.counselbridge.io" /></div>
+                      <div><label>Practice Area(s)</label><input className="input" defaultValue="Family Law, Litigation, Estate Planning, Corporate" /></div>
+                      <div><label>Firm Phone</label><input className="input" defaultValue="(415) 555-0182" /></div>
+                      <div><label>State Bar Number</label><input className="input" defaultValue="CA Bar #294812" /></div>
+                      <div><label>Jurisdiction</label><input className="input" defaultValue="California" /></div>
                     </div>
                     <div style={{ marginBottom: 16 }}>
                       <label>Firm Address</label>
-                      <input className="input" defaultValue={currentFirm?.address || ""} />
+                      <input className="input" defaultValue="1234 Market Street, Suite 500, San Francisco, CA 94102" />
                     </div>
                     <div style={{ display: "flex", gap: 10, alignItems: "center", padding: "14px 16px", background: "var(--gray-50)", borderRadius: "var(--radius-md)", border: "1.5px dashed var(--gray-300)", marginBottom: 16, cursor: "pointer" }}>
                       <Icon name="upload" size={18} color="var(--gray-400)" />
@@ -3108,10 +2790,10 @@ export default function CounselBridge() {
                     <div style={{ fontSize: 13, color: "var(--gray-500)", marginBottom: 16 }}>Immutable record of all platform actions · Retained 7 years</div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
                       {[
-                        { time: "Today 10:32 AM", user: `${currentUser ? currentUser.firstName + " " + currentUser.lastName : "Attorney"}`, action: "Approved AI-generated case update", matter: "Johnson Divorce", type: "ai" },
-                        { time: "Today 9:14 AM", user: "Client", action: "Uploaded 3 documents", matter: "Johnson Divorce", type: "document" },
-                        { time: "Today 8:47 AM", user: `${currentUser ? currentUser.firstName + " " + currentUser.lastName : "Attorney"}`, action: "Sent message to client", matter: "Johnson Divorce", type: "message" },
-                        { time: "Yesterday 5:01 PM", user: `${currentUser ? currentUser.firstName + " " + currentUser.lastName : "Attorney"}`, action: "Sent invoice INV-2024-009", matter: "Chen v. Realty", type: "billing" },
+                        { time: "Today 10:32 AM", user: "Alex Rivera", action: "Approved AI-generated case update", matter: "Johnson Divorce", type: "ai" },
+                        { time: "Today 9:14 AM", user: "Sarah Johnson", action: "Uploaded 3 documents", matter: "Johnson Divorce", type: "document" },
+                        { time: "Today 8:47 AM", user: "Alex Rivera", action: "Sent message to client", matter: "Johnson Divorce", type: "message" },
+                        { time: "Yesterday 5:01 PM", user: "Alex Rivera", action: "Sent invoice INV-2024-009", matter: "Chen v. Realty", type: "billing" },
                         { time: "Yesterday 3:22 PM", user: "Amy Chen", action: "Logged in to client portal", matter: "Chen v. Realty", type: "auth" },
                         { time: "Yesterday 2:18 PM", user: "Priya Patel", action: "Added internal note", matter: "Johnson Divorce", type: "note" },
                       ].map((log, i) => (
