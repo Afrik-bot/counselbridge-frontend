@@ -1026,7 +1026,7 @@ export default function CounselBridge() {
               <span style={{ fontSize: 16 }}>⚖️</span>
             </div>
             <span style={{ fontFamily: "var(--font-serif)", fontSize: 18, color: "var(--navy)" }}>CounselBridge</span>
-            <span style={{ fontSize: 12, color: "var(--gray-400)", marginLeft: 4 }}>· {"Rivera & Associates"}</span>
+            <span style={{ fontSize: 12, color: "var(--gray-400)", marginLeft: 4 }}>· {currentFirm?.name || "Your Firm"}</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ fontSize: 13.5, color: "var(--gray-600)" }}>Sarah Johnson</span>
@@ -1754,7 +1754,7 @@ export default function CounselBridge() {
             </div>
             <span style={{ fontFamily: "var(--font-serif)", fontSize: 20, color: "white", letterSpacing: "-0.3px" }}>CounselBridge</span>
           </div>
-          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 3, paddingLeft: 2 }}>{"Rivera & Associates"}</div>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 3, paddingLeft: 2 }}>{currentFirm?.name || "Your Firm"}</div>
         </div>
 
         {/* Nav */}
@@ -2819,4 +2819,3 @@ export default function CounselBridge() {
     </div>
   );
 }
-
