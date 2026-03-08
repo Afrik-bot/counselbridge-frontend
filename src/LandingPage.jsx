@@ -32,7 +32,6 @@ const css = `
     line-height: 1.6;
   }
 
-  /* ── NOISE TEXTURE OVERLAY ── */
   body::before {
     content: '';
     position: fixed;
@@ -43,14 +42,11 @@ const css = `
     opacity: 0.4;
   }
 
-  /* ── NAV ── */
   nav {
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
+    top: 0; left: 0; right: 0;
     z-index: 100;
-    padding: 20px 48px;
+    padding: 16px 48px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -61,34 +57,27 @@ const css = `
     background: rgba(6,13,26,0.85);
     backdrop-filter: blur(20px);
     border-bottom: 1px solid rgba(255,255,255,0.06);
-    padding: 14px 48px;
+    padding: 10px 48px;
   }
 
   .nav-logo {
     display: flex;
     align-items: center;
-    gap: 10px;
     text-decoration: none;
+    background: #E8ECF2;
+    padding: 6px 14px;
+    border-radius: 10px;
   }
 
-  .nav-logo-icon {
-    width: 36px;
-    height: 36px;
-    background: var(--blue);
-    border-radius: 9px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
+  .nav-logo img {
+    height: 48px;
+    width: auto;
+    object-fit: contain;
+    transition: opacity 0.2s, height 0.3s;
   }
 
-  .nav-logo-text {
-    font-family: var(--serif);
-    font-size: 22px;
-    font-weight: 600;
-    color: white;
-    letter-spacing: -0.02em;
-  }
+  .nav-logo img:hover { opacity: 0.85; }
+  nav.scrolled .nav-logo img { height: 38px; }
 
   .nav-links {
     display: flex;
@@ -118,12 +107,8 @@ const css = `
     transition: all 0.2s !important;
   }
 
-  .nav-cta:hover {
-    background: var(--blue-light) !important;
-    transform: translateY(-1px);
-  }
+  .nav-cta:hover { background: var(--blue-light) !important; transform: translateY(-1px); }
 
-  /* ── HERO ── */
   .hero {
     min-height: 100vh;
     display: flex;
@@ -143,7 +128,6 @@ const css = `
                 radial-gradient(ellipse 60% 50% at 80% 20%, rgba(37,99,235,0.08) 0%, transparent 60%);
   }
 
-  /* Animated grid lines */
   .hero-grid {
     position: absolute;
     inset: 0;
@@ -161,6 +145,20 @@ const css = `
     margin: 0 auto;
   }
 
+  .hero-logo {
+    margin-bottom: 44px;
+    animation: fadeUp 0.8s ease both;
+  }
+
+  .hero-logo img {
+    height: 80px;
+    width: auto;
+    object-fit: contain;
+    background: #E8ECF2;
+    padding: 10px 24px;
+    border-radius: 16px;
+  }
+
   .hero-badge {
     display: inline-flex;
     align-items: center;
@@ -174,12 +172,11 @@ const css = `
     font-weight: 500;
     margin-bottom: 32px;
     letter-spacing: 0.02em;
-    animation: fadeUp 0.8s ease both;
+    animation: fadeUp 0.8s ease 0.05s both;
   }
 
   .hero-badge-dot {
-    width: 6px;
-    height: 6px;
+    width: 6px; height: 6px;
     background: #3B82F6;
     border-radius: 50%;
     animation: pulse 2s infinite;
@@ -200,15 +197,8 @@ const css = `
     animation: fadeUp 0.8s ease 0.1s both;
   }
 
-  .hero-title em {
-    font-style: italic;
-    color: var(--gold-light);
-  }
-
-  .hero-title strong {
-    font-weight: 600;
-    display: block;
-  }
+  .hero-title em { font-style: italic; color: var(--gold-light); }
+  .hero-title strong { font-weight: 600; display: block; }
 
   .hero-subtitle {
     font-size: 18px;
@@ -246,11 +236,7 @@ const css = `
     box-shadow: 0 0 40px rgba(37,99,235,0.3);
   }
 
-  .btn-primary:hover {
-    background: var(--blue-light);
-    transform: translateY(-2px);
-    box-shadow: 0 0 60px rgba(37,99,235,0.4);
-  }
+  .btn-primary:hover { background: var(--blue-light); transform: translateY(-2px); box-shadow: 0 0 60px rgba(37,99,235,0.4); }
 
   .btn-ghost {
     background: rgba(255,255,255,0.06);
@@ -269,12 +255,8 @@ const css = `
     font-family: var(--sans);
   }
 
-  .btn-ghost:hover {
-    background: rgba(255,255,255,0.1);
-    transform: translateY(-2px);
-  }
+  .btn-ghost:hover { background: rgba(255,255,255,0.1); transform: translateY(-2px); }
 
-  /* Stats bar */
   .hero-stats {
     display: flex;
     justify-content: center;
@@ -286,70 +268,23 @@ const css = `
     flex-wrap: wrap;
   }
 
-  .hero-stat-value {
-    font-family: var(--serif);
-    font-size: 36px;
-    font-weight: 600;
-    color: white;
-    letter-spacing: -0.03em;
-  }
+  .hero-stat-value { font-family: var(--serif); font-size: 36px; font-weight: 600; color: white; letter-spacing: -0.03em; }
+  .hero-stat-label { font-size: 13px; color: rgba(255,255,255,0.4); margin-top: 4px; letter-spacing: 0.04em; text-transform: uppercase; }
 
-  .hero-stat-label {
-    font-size: 13px;
-    color: rgba(255,255,255,0.4);
-    margin-top: 4px;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-  }
-
-  /* ── FEATURES ── */
-  .section {
-    padding: 120px 24px;
-    max-width: 1200px;
-    margin: 0 auto;
-  }
+  .section { padding: 120px 24px; max-width: 1200px; margin: 0 auto; }
 
   .section-label {
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--blue-light);
-    margin-bottom: 16px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
+    font-size: 12px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--blue-light); margin-bottom: 16px;
+    display: flex; align-items: center; gap: 10px;
   }
 
-  .section-label::before {
-    content: '';
-    display: inline-block;
-    width: 24px;
-    height: 1px;
-    background: var(--blue-light);
-  }
+  .section-label::before { content: ''; display: inline-block; width: 24px; height: 1px; background: var(--blue-light); }
 
-  .section-title {
-    font-family: var(--serif);
-    font-size: clamp(36px, 4vw, 56px);
-    font-weight: 400;
-    line-height: 1.1;
-    letter-spacing: -0.02em;
-    margin-bottom: 20px;
-  }
-
+  .section-title { font-family: var(--serif); font-size: clamp(36px, 4vw, 56px); font-weight: 400; line-height: 1.1; letter-spacing: -0.02em; margin-bottom: 20px; }
   .section-title em { font-style: italic; color: var(--gold-light); }
+  .section-subtitle { font-size: 17px; color: rgba(255,255,255,0.5); max-width: 560px; line-height: 1.7; font-weight: 300; margin-bottom: 72px; }
 
-  .section-subtitle {
-    font-size: 17px;
-    color: rgba(255,255,255,0.5);
-    max-width: 560px;
-    line-height: 1.7;
-    font-weight: 300;
-    margin-bottom: 72px;
-  }
-
-  /* Feature grid */
   .features-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -371,9 +306,7 @@ const css = `
   .feature-card::before {
     content: '';
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
+    top: 0; left: 0; right: 0;
     height: 1px;
     background: linear-gradient(90deg, transparent, rgba(37,99,235,0.5), transparent);
     opacity: 0;
@@ -383,38 +316,11 @@ const css = `
   .feature-card:hover { background: rgba(15,34,64,0.8); }
   .feature-card:hover::before { opacity: 1; }
 
-  .feature-icon {
-    width: 44px;
-    height: 44px;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 20px;
-    margin-bottom: 20px;
-    background: rgba(37,99,235,0.12);
-    border: 1px solid rgba(37,99,235,0.2);
-  }
+  .feature-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 20px; background: rgba(37,99,235,0.12); border: 1px solid rgba(37,99,235,0.2); }
+  .feature-title { font-family: var(--serif); font-size: 20px; font-weight: 600; margin-bottom: 10px; letter-spacing: -0.01em; }
+  .feature-desc { font-size: 14px; color: rgba(255,255,255,0.45); line-height: 1.7; font-weight: 300; }
 
-  .feature-title {
-    font-family: var(--serif);
-    font-size: 20px;
-    font-weight: 600;
-    margin-bottom: 10px;
-    letter-spacing: -0.01em;
-  }
-
-  .feature-desc {
-    font-size: 14px;
-    color: rgba(255,255,255,0.45);
-    line-height: 1.7;
-    font-weight: 300;
-  }
-
-  /* ── AI SECTION ── */
-  .ai-section {
-    padding: 0 24px 120px;
-  }
+  .ai-section { padding: 0 24px 120px; }
 
   .ai-inner {
     max-width: 1200px;
@@ -431,249 +337,54 @@ const css = `
     overflow: hidden;
   }
 
-  .ai-inner::before {
-    content: '';
-    position: absolute;
-    top: -100px;
-    right: -100px;
-    width: 400px;
-    height: 400px;
-    background: radial-gradient(circle, rgba(37,99,235,0.12) 0%, transparent 70%);
-  }
+  .ai-inner::before { content: ''; position: absolute; top: -100px; right: -100px; width: 400px; height: 400px; background: radial-gradient(circle, rgba(37,99,235,0.12) 0%, transparent 70%); }
 
-  .ai-zone {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 14px 18px;
-    border-radius: 12px;
-    margin-bottom: 12px;
-    border: 1px solid;
-    transition: transform 0.2s;
-  }
-
+  .ai-zone { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-radius: 12px; margin-bottom: 12px; border: 1px solid; transition: transform 0.2s; }
   .ai-zone:hover { transform: translateX(4px); }
+  .ai-zone-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .ai-zone-label { font-size: 13px; font-weight: 600; letter-spacing: 0.04em; }
+  .ai-zone-desc { font-size: 13px; color: rgba(255,255,255,0.45); margin-left: auto; }
 
-  .ai-zone-1 { background: rgba(5,150,105,0.08); border-color: rgba(5,150,105,0.2); }
-  .ai-zone-2 { background: rgba(37,99,235,0.08); border-color: rgba(37,99,235,0.2); }
-  .ai-zone-3 { background: rgba(201,168,76,0.08); border-color: rgba(201,168,76,0.2); }
+  .pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
 
-  .ai-zone-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
+  .pricing-card { background: var(--navy-2); border: 1px solid rgba(255,255,255,0.07); border-radius: 20px; padding: 36px 32px; position: relative; transition: transform 0.3s, border-color 0.3s; }
+  .pricing-card:hover { transform: translateY(-4px); border-color: rgba(37,99,235,0.3); }
+  .pricing-card.featured { background: linear-gradient(135deg, var(--navy-3) 0%, rgba(37,99,235,0.1) 100%); border-color: rgba(37,99,235,0.4); box-shadow: 0 0 60px rgba(37,99,235,0.12); }
 
-  .ai-zone-label {
-    font-size: 13px;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-  }
+  .pricing-badge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: var(--blue); color: white; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 4px 14px; border-radius: 100px; white-space: nowrap; }
+  .pricing-plan { font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.4); margin-bottom: 16px; }
+  .pricing-price { font-family: var(--serif); font-size: 52px; font-weight: 600; letter-spacing: -0.03em; line-height: 1; margin-bottom: 6px; }
+  .pricing-price sup { font-size: 24px; font-weight: 400; vertical-align: super; margin-right: 2px; }
+  .pricing-period { font-size: 13px; color: rgba(255,255,255,0.35); margin-bottom: 28px; }
+  .pricing-divider { height: 1px; background: rgba(255,255,255,0.07); margin-bottom: 28px; }
+  .pricing-feature { display: flex; align-items: center; gap: 10px; font-size: 14px; color: rgba(255,255,255,0.65); margin-bottom: 12px; font-weight: 300; }
+  .pricing-check { width: 18px; height: 18px; border-radius: 50%; background: rgba(5,150,105,0.15); border: 1px solid rgba(5,150,105,0.3); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 10px; }
+  .pricing-cta { width: 100%; margin-top: 32px; padding: 13px 0; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: var(--sans); text-align: center; text-decoration: none; display: block; }
+  .pricing-cta-primary { background: var(--blue); color: white; border: none; box-shadow: 0 0 30px rgba(37,99,235,0.25); }
+  .pricing-cta-primary:hover { background: var(--blue-light); transform: translateY(-1px); }
+  .pricing-cta-ghost { background: transparent; color: rgba(255,255,255,0.7); border: 1px solid rgba(255,255,255,0.12); }
+  .pricing-cta-ghost:hover { background: rgba(255,255,255,0.06); transform: translateY(-1px); }
 
-  .ai-zone-desc {
-    font-size: 13px;
-    color: rgba(255,255,255,0.45);
-    margin-left: auto;
-  }
+  footer { border-top: 1px solid rgba(255,255,255,0.06); padding: 48px 24px; }
 
-  /* ── PRICING ── */
-  .pricing-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 20px;
-    margin-top: 0;
-  }
+  .footer-inner { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 20px; }
 
-  .pricing-card {
-    background: var(--navy-2);
-    border: 1px solid rgba(255,255,255,0.07);
-    border-radius: 20px;
-    padding: 36px 32px;
-    position: relative;
-    transition: transform 0.3s, border-color 0.3s;
-  }
+  .footer-logo img { height: 36px; width: auto; opacity: 0.9; transition: opacity 0.2s; }
+  .footer-logo img:hover { opacity: 1; }
 
-  .pricing-card:hover {
-    transform: translateY(-4px);
-    border-color: rgba(37,99,235,0.3);
-  }
-
-  .pricing-card.featured {
-    background: linear-gradient(135deg, var(--navy-3) 0%, rgba(37,99,235,0.1) 100%);
-    border-color: rgba(37,99,235,0.4);
-    box-shadow: 0 0 60px rgba(37,99,235,0.12);
-  }
-
-  .pricing-badge {
-    position: absolute;
-    top: -12px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: var(--blue);
-    color: white;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    padding: 4px 14px;
-    border-radius: 100px;
-    white-space: nowrap;
-  }
-
-  .pricing-plan {
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: rgba(255,255,255,0.4);
-    margin-bottom: 16px;
-  }
-
-  .pricing-price {
-    font-family: var(--serif);
-    font-size: 52px;
-    font-weight: 600;
-    letter-spacing: -0.03em;
-    line-height: 1;
-    margin-bottom: 6px;
-  }
-
-  .pricing-price sup {
-    font-size: 24px;
-    font-weight: 400;
-    vertical-align: super;
-    margin-right: 2px;
-  }
-
-  .pricing-period {
-    font-size: 13px;
-    color: rgba(255,255,255,0.35);
-    margin-bottom: 28px;
-  }
-
-  .pricing-divider {
-    height: 1px;
-    background: rgba(255,255,255,0.07);
-    margin-bottom: 28px;
-  }
-
-  .pricing-feature {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 14px;
-    color: rgba(255,255,255,0.65);
-    margin-bottom: 12px;
-    font-weight: 300;
-  }
-
-  .pricing-check {
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: rgba(5,150,105,0.15);
-    border: 1px solid rgba(5,150,105,0.3);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    font-size: 10px;
-  }
-
-  .pricing-cta {
-    width: 100%;
-    margin-top: 32px;
-    padding: 13px 0;
-    border-radius: 10px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-    font-family: var(--sans);
-    text-align: center;
-    text-decoration: none;
-    display: block;
-  }
-
-  .pricing-cta-primary {
-    background: var(--blue);
-    color: white;
-    border: none;
-    box-shadow: 0 0 30px rgba(37,99,235,0.25);
-  }
-
-  .pricing-cta-primary:hover {
-    background: var(--blue-light);
-    transform: translateY(-1px);
-  }
-
-  .pricing-cta-ghost {
-    background: transparent;
-    color: rgba(255,255,255,0.7);
-    border: 1px solid rgba(255,255,255,0.12);
-  }
-
-  .pricing-cta-ghost:hover {
-    background: rgba(255,255,255,0.06);
-    transform: translateY(-1px);
-  }
-
-  /* ── FOOTER ── */
-  footer {
-    border-top: 1px solid rgba(255,255,255,0.06);
-    padding: 48px 24px;
-    text-align: center;
-  }
-
-  .footer-inner {
-    max-width: 1200px;
-    margin: 0 auto;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 20px;
-  }
-
-  .footer-copy {
-    font-size: 13px;
-    color: rgba(255,255,255,0.25);
-  }
-
-  .footer-links {
-    display: flex;
-    gap: 28px;
-    list-style: none;
-  }
-
-  .footer-links a {
-    font-size: 13px;
-    color: rgba(255,255,255,0.3);
-    text-decoration: none;
-    transition: color 0.2s;
-  }
-
+  .footer-copy { font-size: 13px; color: rgba(255,255,255,0.25); }
+  .footer-links { display: flex; gap: 28px; list-style: none; }
+  .footer-links a { font-size: 13px; color: rgba(255,255,255,0.3); text-decoration: none; transition: color 0.2s; }
   .footer-links a:hover { color: rgba(255,255,255,0.7); }
 
-  /* ── ANIMATIONS ── */
   @keyframes fadeUp {
     from { opacity: 0; transform: translateY(24px); }
     to { opacity: 1; transform: translateY(0); }
   }
 
-  .fade-up {
-    opacity: 0;
-    transform: translateY(32px);
-    transition: opacity 0.7s ease, transform 0.7s ease;
-  }
+  .fade-up { opacity: 0; transform: translateY(32px); transition: opacity 0.7s ease, transform 0.7s ease; }
+  .fade-up.visible { opacity: 1; transform: translateY(0); }
 
-  .fade-up.visible {
-    opacity: 1;
-    transform: translateY(0);
-  }
-
-  /* ── RESPONSIVE ── */
   @media (max-width: 900px) {
     nav { padding: 16px 24px; }
     nav.scrolled { padding: 12px 24px; }
@@ -682,6 +393,7 @@ const css = `
     .pricing-grid { grid-template-columns: 1fr; }
     .ai-inner { grid-template-columns: 1fr; padding: 40px 28px; gap: 40px; }
     .hero-stats { gap: 28px; }
+    .hero-logo img { height: 56px; }
   }
 `;
 
@@ -696,28 +408,19 @@ const features = [
 
 const plans = [
   {
-    name: "Solo",
-    price: "49",
-    period: "per month",
+    name: "Solo", price: "49", period: "per month",
     features: ["1 attorney", "Up to 25 active matters", "Client portal", "Secure messaging", "Document management", "Basic AI drafting"],
-    cta: "Start free trial",
-    featured: false,
+    cta: "Start free trial", featured: false,
   },
   {
-    name: "Firm",
-    price: "149",
-    period: "per month",
+    name: "Firm", price: "149", period: "per month",
     features: ["Up to 5 attorneys", "Unlimited matters", "Everything in Solo", "AI approval workflow", "Video consultations", "Stripe billing", "Priority support"],
-    cta: "Start free trial",
-    featured: true,
+    cta: "Start free trial", featured: true,
   },
   {
-    name: "Enterprise",
-    price: "399",
-    period: "per month",
+    name: "Enterprise", price: "399", period: "per month",
     features: ["Unlimited attorneys", "Unlimited matters", "Everything in Firm", "Custom AI agents", "SSO & MFA", "Dedicated onboarding", "SLA guarantee"],
-    cta: "Contact sales",
-    featured: false,
+    cta: "Contact sales", featured: false,
   },
 ];
 
@@ -737,7 +440,6 @@ export default function LandingPage() {
     const handleScroll = () => setScrolled(window.scrollY > 40);
     window.addEventListener("scroll", handleScroll);
 
-    // Intersection observer for fade-up animations
     observerRef.current = new IntersectionObserver(
       (entries) => entries.forEach((e) => { if (e.isIntersecting) e.target.classList.add("visible"); }),
       { threshold: 0.1, rootMargin: "0px 0px -60px 0px" }
@@ -755,11 +457,10 @@ export default function LandingPage() {
     <div style={{ minHeight: "100vh", background: "var(--navy)", fontFamily: "var(--sans)" }}>
       <style>{css}</style>
 
-      {/* ── NAV ── */}
+      {/* NAV */}
       <nav className={scrolled ? "scrolled" : ""}>
         <a href="#" className="nav-logo">
-          <div className="nav-logo-icon">⚖</div>
-          <span className="nav-logo-text">CounselBridge</span>
+          <img src="/logo.png" alt="CounselBridge" />
         </a>
         <ul className="nav-links">
           <li><a href="#features">Features</a></li>
@@ -769,11 +470,12 @@ export default function LandingPage() {
         </ul>
       </nav>
 
-      {/* ── HERO ── */}
+      {/* HERO */}
       <section className="hero">
         <div className="hero-bg" />
         <div className="hero-grid" />
         <div className="hero-content">
+
           <div className="hero-badge">
             <span className="hero-badge-dot" />
             Now with AI-powered client communication
@@ -789,12 +491,8 @@ export default function LandingPage() {
           </p>
 
           <div className="hero-actions">
-            <a href="/app" className="btn-primary">
-              Start free 14-day trial →
-            </a>
-            <a href="#features" className="btn-ghost">
-              See how it works
-            </a>
+            <a href="/app" className="btn-primary">Start free 14-day trial →</a>
+            <a href="#features" className="btn-ghost">See how it works</a>
           </div>
 
           <div className="hero-stats">
@@ -808,14 +506,13 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── FEATURES ── */}
+      {/* FEATURES */}
       <section className="section" id="features">
         <div className="fade-up">
           <div className="section-label">Platform</div>
           <h2 className="section-title">Everything your practice needs,<br /><em>nothing it doesn't</em></h2>
           <p className="section-subtitle">Built specifically for attorneys who want to spend less time on administration and more time practicing law.</p>
         </div>
-
         <div className="features-grid fade-up">
           {features.map((f) => (
             <div key={f.title} className="feature-card">
@@ -827,7 +524,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── AI SECTION ── */}
+      {/* AI SECTION */}
       <section className="ai-section" id="ai">
         <div className="ai-inner fade-up">
           <div>
@@ -838,9 +535,7 @@ export default function LandingPage() {
             <p style={{ fontSize: 16, color: "rgba(255,255,255,0.5)", lineHeight: 1.7, fontWeight: 300, marginBottom: 32 }}>
               CounselBridge AI operates in three zones. It automates what's safe, flags what needs your eye, and stays completely out of legal strategy — because that's your job.
             </p>
-            <a href="/app" className="btn-primary" style={{ display: "inline-flex" }}>
-              Explore AI features →
-            </a>
+            <a href="/app" className="btn-primary" style={{ display: "inline-flex" }}>Explore AI features →</a>
           </div>
 
           <div style={{ position: "relative", zIndex: 2 }}>
@@ -863,22 +558,19 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── PRICING ── */}
+      {/* PRICING */}
       <section className="section" id="pricing">
         <div className="fade-up" style={{ marginBottom: 56 }}>
           <div className="section-label">Pricing</div>
           <h2 className="section-title">Simple, transparent<br /><em>pricing</em></h2>
           <p className="section-subtitle">No setup fees. No per-client charges. Cancel anytime. All plans include a 14-day free trial.</p>
         </div>
-
         <div className="pricing-grid fade-up">
           {plans.map((plan) => (
             <div key={plan.name} className={`pricing-card ${plan.featured ? "featured" : ""}`}>
               {plan.featured && <div className="pricing-badge">Most Popular</div>}
               <div className="pricing-plan">{plan.name}</div>
-              <div className="pricing-price">
-                <sup>$</sup>{plan.price}
-              </div>
+              <div className="pricing-price"><sup>$</sup>{plan.price}</div>
               <div className="pricing-period">{plan.period}</div>
               <div className="pricing-divider" />
               {plan.features.map((f) => (
@@ -887,28 +579,23 @@ export default function LandingPage() {
                   {f}
                 </div>
               ))}
-              <a
-                href="/app"
-                className={`pricing-cta ${plan.featured ? "pricing-cta-primary" : "pricing-cta-ghost"}`}
-              >
+              <a href="/app" className={`pricing-cta ${plan.featured ? "pricing-cta-primary" : "pricing-cta-ghost"}`}>
                 {plan.cta}
               </a>
             </div>
           ))}
         </div>
-
         <div className="fade-up" style={{ marginTop: 40, textAlign: "center", fontSize: 14, color: "rgba(255,255,255,0.3)" }}>
           All plans include SSL encryption, SOC 2 compliance, automatic backups, and 99.9% uptime SLA.
         </div>
       </section>
 
-      {/* ── FOOTER ── */}
+      {/* FOOTER */}
       <footer>
         <div className="footer-inner">
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div className="nav-logo-icon" style={{ width: 28, height: 28, fontSize: 14 }}>⚖</div>
-            <span style={{ fontFamily: "var(--serif)", fontSize: 18, color: "rgba(255,255,255,0.7)" }}>CounselBridge</span>
-          </div>
+          <a href="#" className="footer-logo">
+            <img src="/logo.png" alt="CounselBridge" />
+          </a>
           <div className="footer-copy">© {new Date().getFullYear()} CounselBridge · counselbridge.me</div>
           <ul className="footer-links">
             <li><a href="#">Privacy</a></li>
