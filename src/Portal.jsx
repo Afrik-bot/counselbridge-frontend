@@ -1629,7 +1629,7 @@ export default function CounselBridge() {
 
             {authMode === "signup" ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 13 }}>
-                <div><label>Firm Name *</label><input className="input" placeholder=currentFirm?.name || "Your Firm" value={regData.firmName} onChange={e => setReg("firmName", e.target.value)} /></div>
+                <div><label>Firm Name *</label><input className="input" placeholder="Your Firm" value={regData.firmName} onChange={e => setReg("firmName", e.target.value)} /></div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                   <div><label>First Name *</label><input className="input" placeholder="Alex" value={regData.firstName} onChange={e => setReg("firstName", e.target.value)} /></div>
                   <div><label>Last Name</label><input className="input" placeholder="Rivera" value={regData.lastName} onChange={e => setReg("lastName", e.target.value)} /></div>
