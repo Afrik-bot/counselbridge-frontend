@@ -29,7 +29,7 @@ const css = `
     border-bottom: 1px solid rgba(255,255,255,0.06); padding: 10px 48px;
   }
 
-  .nav-logo {
+
     display: flex; align-items: center; text-decoration: none;
     background: #E8ECF2; padding: 6px 14px; border-radius: 10px;
   }
@@ -159,8 +159,7 @@ const css = `
 
   footer { border-top: 1px solid rgba(255,255,255,0.06); padding: 48px 24px; }
   .footer-inner { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 20px; }
-  .footer-logo img { height: 36px; width: auto; opacity: 0.9; transition: opacity 0.2s; }
-  .footer-logo img:hover { opacity: 1; }
+
   .footer-copy { font-size: 13px; color: rgba(255,255,255,0.25); }
   .footer-links { display: flex; gap: 28px; list-style: none; }
   .footer-links a { font-size: 13px; color: rgba(255,255,255,0.3); text-decoration: none; transition: color 0.2s; }
@@ -236,8 +235,8 @@ export default function LandingPage() {
       {/* NAV */}
       <nav className={scrolled ? "scrolled" : ""}>
         <a href="#" className="nav-logo">
-          <div style={{ width: 32, height: 32, background: "#2563EB", borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17 }}>⚖️</div>
-          <span style={{ fontFamily: "var(--serif)", fontSize: 20, color: "white", letterSpacing: "-0.3px", marginLeft: 8 }}>CounselBridge</span>
+          <div className="nav-logo-icon">⚖</div>
+          <span className="nav-logo-text">CounselBridge</span>
         </a>
         <ul className="nav-links">
           <li><a href="#features">Features</a></li>
@@ -364,10 +363,10 @@ export default function LandingPage() {
       {/* FOOTER */}
       <footer>
         <div className="footer-inner">
-          <a href="#" className="footer-logo" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
-            <div style={{ width: 24, height: 24, background: "#2563EB", borderRadius: 7, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, opacity: 0.7 }}>⚖️</div>
-            <span style={{ fontFamily: "var(--serif)", fontSize: 15, color: "rgba(255,255,255,0.35)", letterSpacing: "-0.2px" }}>CounselBridge</span>
-          </a>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div className="nav-logo-icon" style={{ width: 28, height: 28, fontSize: 14 }}>⚖</div>
+            <span style={{ fontFamily: "var(--serif)", fontSize: 18, color: "rgba(255,255,255,0.7)" }}>CounselBridge</span>
+          </div>
           <div className="footer-copy">© {new Date().getFullYear()} CounselBridge · counselbridge.me</div>
           <ul className="footer-links">
             <li><a href="#">Privacy</a></li>
