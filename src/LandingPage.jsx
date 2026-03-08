@@ -32,7 +32,7 @@ const css = `
     line-height: 1.6;
   }
 
-  /* \\u2500\\u2500 NOISE TEXTURE OVERLAY \\u2500\\u2500 */
+  /* \u2500\u2500 NOISE TEXTURE OVERLAY \u2500\u2500 */
   body::before {
     content: '';
     position: fixed;
@@ -43,7 +43,7 @@ const css = `
     opacity: 0.4;
   }
 
-  /* \\u2500\\u2500 NAV \\u2500\\u2500 */
+  /* \u2500\u2500 NAV \u2500\u2500 */
   nav {
     position: fixed;
     top: 0;
@@ -123,7 +123,7 @@ const css = `
     transform: translateY(-1px);
   }
 
-  /* \\u2500\\u2500 HERO \\u2500\\u2500 */
+  /* \u2500\u2500 HERO \u2500\u2500 */
   .hero {
     min-height: 100vh;
     display: flex;
@@ -143,7 +143,6 @@ const css = `
                 radial-gradient(ellipse 60% 50% at 80% 20%, rgba(37,99,235,0.08) 0%, transparent 60%);
   }
 
-  /* Animated grid lines */
   .hero-grid {
     position: absolute;
     inset: 0;
@@ -274,7 +273,6 @@ const css = `
     transform: translateY(-2px);
   }
 
-  /* Stats bar */
   .hero-stats {
     display: flex;
     justify-content: center;
@@ -302,7 +300,7 @@ const css = `
     text-transform: uppercase;
   }
 
-  /* \\u2500\\u2500 FEATURES \\u2500\\u2500 */
+  /* \u2500\u2500 FEATURES \u2500\u2500 */
   .section {
     padding: 120px 24px;
     max-width: 1200px;
@@ -349,7 +347,6 @@ const css = `
     margin-bottom: 72px;
   }
 
-  /* Feature grid */
   .features-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -411,7 +408,7 @@ const css = `
     font-weight: 300;
   }
 
-  /* \\u2500\\u2500 AI SECTION \\u2500\\u2500 */
+  /* \u2500\u2500 AI SECTION \u2500\u2500 */
   .ai-section {
     padding: 0 24px 120px;
   }
@@ -477,7 +474,7 @@ const css = `
     margin-left: auto;
   }
 
-  /* \\u2500\\u2500 PRICING \\u2500\\u2500 */
+  /* \u2500\u2500 PRICING \u2500\u2500 */
   .pricing-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -619,7 +616,7 @@ const css = `
     transform: translateY(-1px);
   }
 
-  /* \\u2500\\u2500 FOOTER \\u2500\\u2500 */
+  /* \u2500\u2500 FOOTER \u2500\u2500 */
   footer {
     border-top: 1px solid rgba(255,255,255,0.06);
     padding: 48px 24px;
@@ -656,7 +653,7 @@ const css = `
 
   .footer-links a:hover { color: rgba(255,255,255,0.7); }
 
-  /* \\u2500\\u2500 ANIMATIONS \\u2500\\u2500 */
+  /* \u2500\u2500 ANIMATIONS \u2500\u2500 */
   @keyframes fadeUp {
     from { opacity: 0; transform: translateY(24px); }
     to { opacity: 1; transform: translateY(0); }
@@ -673,7 +670,7 @@ const css = `
     transform: translateY(0);
   }
 
-  /* \\u2500\\u2500 RESPONSIVE \\u2500\\u2500 */
+  /* \u2500\u2500 RESPONSIVE \u2500\u2500 */
   @media (max-width: 900px) {
     nav { padding: 16px 24px; }
     nav.scrolled { padding: 12px 24px; }
@@ -686,12 +683,12 @@ const css = `
 `;
 
 const features = [
-  { icon: "⚖\\ufe0f", title: "Matter Management", desc: "Organize every case with structured timelines, document requests, and real-time status tracking — all in one place." },
-  { icon: "\\ud83d\\udd12", title: "Secure Messaging", desc: "End-to-end encrypted client communication with internal notes, read receipts, and complete message history." },
-  { icon: "\\ud83e\\udd16", title: "AI Draft Assistant", desc: "Generate professional client messages in seconds. Every AI output requires attorney approval before sending." },
-  { icon: "\\ud83d\\udcc4", title: "Document Hub", desc: "AI-powered document classification, version control, and secure client upload portal with access controls." },
-  { icon: "\\ud83d\\udcb3", title: "Integrated Billing", desc: "Create invoices, send payment links, and track retainer balances — with Stripe-powered online payments." },
-  { icon: "\\ud83d\\udcf9", title: "Video Consultations", desc: "Built-in HD video calls with screen sharing, in-call chat, and AI-generated post-meeting summaries." },
+  { icon: "⚖", title: "Matter Management", desc: "Organize every case with structured timelines, document requests, and real-time status tracking — all in one place." },
+  { icon: "🔒", title: "Secure Messaging", desc: "End-to-end encrypted client communication with internal notes, read receipts, and complete message history." },
+  { icon: "🤖", title: "AI Draft Assistant", desc: "Generate professional client messages in seconds. Every AI output requires attorney approval before sending." },
+  { icon: "📄", title: "Document Hub", desc: "AI-powered document classification, version control, and secure client upload portal with access controls." },
+  { icon: "💳", title: "Integrated Billing", desc: "Create invoices, send payment links, and track retainer balances — with Stripe-powered online payments." },
+  { icon: "📹", title: "Video Consultations", desc: "Built-in HD video calls with screen sharing, in-call chat, and AI-generated post-meeting summaries." },
 ];
 
 const plans = [
@@ -737,7 +734,6 @@ export default function LandingPage() {
     const handleScroll = () => setScrolled(window.scrollY > 40);
     window.addEventListener("scroll", handleScroll);
 
-    // Intersection observer for fade-up animations
     observerRef.current = new IntersectionObserver(
       (entries) => entries.forEach((e) => { if (e.isIntersecting) e.target.classList.add("visible"); }),
       { threshold: 0.1, rootMargin: "0px 0px -60px 0px" }
@@ -755,7 +751,7 @@ export default function LandingPage() {
     <div style={{ minHeight: "100vh", background: "var(--navy)", fontFamily: "var(--sans)" }}>
       <style>{css}</style>
 
-      {/* \\u2500\\u2500 NAV \\u2500\\u2500 */}
+      {/* NAV */}
       <nav className={scrolled ? "scrolled" : ""}>
         <a href="#" className="nav-logo">
           <div className="nav-logo-icon">⚖</div>
@@ -765,11 +761,11 @@ export default function LandingPage() {
           <li><a href="#features">Features</a></li>
           <li><a href="#ai">AI Tools</a></li>
           <li><a href="#pricing">Pricing</a></li>
-          <li><a href="/app" className="nav-cta">Get Started \\u2192</a></li>
+          <li><a href="/app" className="nav-cta">Get Started &rarr;</a></li>
         </ul>
       </nav>
 
-      {/* \\u2500\\u2500 HERO \\u2500\\u2500 */}
+      {/* HERO */}
       <section className="hero">
         <div className="hero-bg" />
         <div className="hero-grid" />
@@ -790,7 +786,7 @@ export default function LandingPage() {
 
           <div className="hero-actions">
             <a href="/app" className="btn-primary">
-              Start free 14-day trial \\u2192
+              Start free 14-day trial &rarr;
             </a>
             <a href="#features" className="btn-ghost">
               See how it works
@@ -808,7 +804,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* \\u2500\\u2500 FEATURES \\u2500\\u2500 */}
+      {/* FEATURES */}
       <section className="section" id="features">
         <div className="fade-up">
           <div className="section-label">Platform</div>
@@ -827,7 +823,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* \\u2500\\u2500 AI SECTION \\u2500\\u2500 */}
+      {/* AI SECTION */}
       <section className="ai-section" id="ai">
         <div className="ai-inner fade-up">
           <div>
@@ -839,7 +835,7 @@ export default function LandingPage() {
               CounselBridge AI operates in three zones. It automates what's safe, flags what needs your eye, and stays completely out of legal strategy — because that's your job.
             </p>
             <a href="/app" className="btn-primary" style={{ display: "inline-flex" }}>
-              Explore AI features \\u2192
+              Explore AI features &rarr;
             </a>
           </div>
 
@@ -857,13 +853,13 @@ export default function LandingPage() {
               </div>
             ))}
             <div style={{ marginTop: 20, padding: "14px 18px", background: "rgba(255,255,255,0.04)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.07)", fontSize: 13, color: "rgba(255,255,255,0.35)", lineHeight: 1.6 }}>
-              \\ud83d\\udd12 Every AI output is logged, timestamped, and tied to the approving attorney — creating a complete audit trail.
+              🔒 Every AI output is logged, timestamped, and tied to the approving attorney — creating a complete audit trail.
             </div>
           </div>
         </div>
       </section>
 
-      {/* \\u2500\\u2500 PRICING \\u2500\\u2500 */}
+      {/* PRICING */}
       <section className="section" id="pricing">
         <div className="fade-up" style={{ marginBottom: 56 }}>
           <div className="section-label">Pricing</div>
@@ -883,7 +879,7 @@ export default function LandingPage() {
               <div className="pricing-divider" />
               {plan.features.map((f) => (
                 <div key={f} className="pricing-feature">
-                  <div className="pricing-check">\\u2713</div>
+                  <div className="pricing-check">✓</div>
                   {f}
                 </div>
               ))}
@@ -902,14 +898,14 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* \\u2500\\u2500 FOOTER \\u2500\\u2500 */}
+      {/* FOOTER */}
       <footer>
         <div className="footer-inner">
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div className="nav-logo-icon" style={{ width: 28, height: 28, fontSize: 14 }}>⚖</div>
             <span style={{ fontFamily: "var(--serif)", fontSize: 18, color: "rgba(255,255,255,0.7)" }}>CounselBridge</span>
           </div>
-          <div className="footer-copy">© {new Date().getFullYear()} CounselBridge \\u00b7 counselbridge.me</div>
+          <div className="footer-copy">&copy; {new Date().getFullYear()} CounselBridge &middot; counselbridge.me</div>
           <ul className="footer-links">
             <li><a href="#">Privacy</a></li>
             <li><a href="#">Terms</a></li>
