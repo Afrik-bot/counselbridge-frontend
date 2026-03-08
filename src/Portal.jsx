@@ -808,6 +808,9 @@ const VideoCall = ({ contact, onClose, isClient }) => {
 
 // --- STRIPE PAYMENT MODAL -----------------------------------------------------
 const StripePaymentModal = ({ invoice, onClose, onPaid }) => {
+const useState = _useState;
+const useEffect = _useEffect;
+const useRef = _useRef;
   const [stripeObj, setStripeObj] = useState(null);
   const [clientSecret, setClientSecret] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -2886,6 +2889,8 @@ export default function CounselBridge() {
     </div>
   );
 }
+
+
 
 
 
