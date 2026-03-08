@@ -2063,7 +2063,7 @@ export default function CounselBridge() {
         <div style={{ padding: "18px 10px 16px", borderBottom: "1px solid rgba(255,255,255,0.08)", marginBottom: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 32, height: 32, background: "var(--blue)", borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              ⚖
+              ><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="3" x2="12" y2="20"/><line x1="3" y1="8" x2="21" y2="8"/><path d="M5 8c0 3 2 5 4 5s4-2 4-5"/><path d="M15 8c0 3 2 5 4 5s4-2 4-5"/><line x1="7" y1="20" x2="17" y2="20"/></svg>
             </div>
             <span style={{ fontFamily: "var(--font-serif)", fontSize: 20, color: "white", letterSpacing: "-0.3px" }}>CounselBridge</span>
           </div>

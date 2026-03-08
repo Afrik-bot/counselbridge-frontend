@@ -758,7 +758,7 @@ export default function LandingPage() {
       {/* \\u2500\\u2500 NAV \\u2500\\u2500 */}
       <nav className={scrolled ? "scrolled" : ""}>
         <a href="#" className="nav-logo">
-          <div className="nav-logo-icon">⚖</div>
+          <div className="nav-logo-icon">><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="3" x2="12" y2="20"/><line x1="3" y1="8" x2="21" y2="8"/><path d="M5 8c0 3 2 5 4 5s4-2 4-5"/><path d="M15 8c0 3 2 5 4 5s4-2 4-5"/><line x1="7" y1="20" x2="17" y2="20"/></svg></div>
           <span className="nav-logo-text">CounselBridge</span>
         </a>
         <ul className="nav-links">
