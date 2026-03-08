@@ -428,7 +428,7 @@ export default function LandingPage() {
   const [scrolled, setScrolled] = useState(false);
   const observerRef = useRef(null);
 
-
+  useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 40);
     window.addEventListener("scroll", handleScroll);
 
