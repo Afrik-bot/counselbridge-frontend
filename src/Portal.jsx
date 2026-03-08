@@ -2063,7 +2063,7 @@ export default function CounselBridge() {
         <div style={{ padding: "18px 10px 16px", borderBottom: "1px solid rgba(255,255,255,0.08)", marginBottom: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 32, height: 32, background: "var(--blue)", borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Icon name="shield" size={17} color="white" />
+              <Icon name="scale" size={17} color="white" />
             </div>
             <span style={{ fontFamily: "var(--font-serif)", fontSize: 20, color: "white", letterSpacing: "-0.3px" }}>CounselBridge</span>
           </div>

@@ -236,7 +236,8 @@ export default function LandingPage() {
       {/* NAV */}
       <nav className={scrolled ? "scrolled" : ""}>
         <a href="#" className="nav-logo">
-          <img src="/logo.png" alt="CounselBridge" />
+          <div style={{ width: 32, height: 32, background: "#2563EB", borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17 }}>⚖️</div>
+          <span style={{ fontFamily: "var(--serif)", fontSize: 20, color: "white", letterSpacing: "-0.3px", marginLeft: 8 }}>CounselBridge</span>
         </a>
         <ul className="nav-links">
           <li><a href="#features">Features</a></li>
@@ -363,8 +364,9 @@ export default function LandingPage() {
       {/* FOOTER */}
       <footer>
         <div className="footer-inner">
-          <a href="#" className="footer-logo">
-            <img src="/logo.png" alt="CounselBridge" />
+          <a href="#" className="footer-logo" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
+            <div style={{ width: 24, height: 24, background: "#2563EB", borderRadius: 7, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, opacity: 0.7 }}>⚖️</div>
+            <span style={{ fontFamily: "var(--serif)", fontSize: 15, color: "rgba(255,255,255,0.35)", letterSpacing: "-0.2px" }}>CounselBridge</span>
           </a>
           <div className="footer-copy">© {new Date().getFullYear()} CounselBridge · counselbridge.me</div>
           <ul className="footer-links">
