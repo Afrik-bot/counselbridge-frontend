@@ -2755,7 +2755,7 @@ export default function CounselBridge() {
                     {[
                       { time: "9:00 AM", label: "Review Chen exhibits", type: "briefcase", color: "var(--gray-400)", matter: "Chen v. Realty" },
                       { time: "11:30 AM", label: "Team standup", type: "users", color: "var(--purple)", matter: "All matters" },
-                      { time: "2:00 PM", label: `Video call — ${matters[0]?.client || "Client"}`, type: "video", color: "var(--blue)", matter: matters[0]?.title || "Matter", onClick: () => { setVideoCallContact({ name: selectedMatter?.client || "Client", matter: "Johnson Divorce Proceeding", myName: currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "You" }); setShowVideoCall(true); } },
+                      { time: "2:00 PM", label: `Video call — ${matters[0]?.client || "Client"}`, type: "video", color: "var(--blue)", matter: matters[0]?.title || "Matter", onClick: () => { setVideoCallContact({ name: "Client", matter: "Johnson Divorce Proceeding", myName: currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "You" }); setShowVideoCall(true); } },
                       { time: "4:00 PM", label: "Draft motion in limine", type: "file", color: "var(--gray-400)", matter: "Chen v. Realty" },
                     ].map((ev, i) => (
                       <div key={i} onClick={ev.onClick} style={{ display: "flex", gap: 10, padding: "9px 0", borderBottom: i < 3 ? "1px solid var(--gray-100)" : "none", alignItems: "center", cursor: ev.onClick ? "pointer" : "default", borderRadius: ev.onClick ? "var(--radius-sm)" : 0 }}>
@@ -3109,7 +3109,7 @@ export default function CounselBridge() {
                     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
                       {[
                         { time: "Today 10:32 AM", user: `${currentUser ? currentUser.firstName + " " + currentUser.lastName : "Attorney"}`, action: "Approved AI-generated case update", matter: "Johnson Divorce", type: "ai" },
-                        { time: "Today 9:14 AM", user: selectedMatter?.client || "Client", action: "Uploaded 3 documents", matter: "Johnson Divorce", type: "document" },
+                        { time: "Today 9:14 AM", user: "Client", action: "Uploaded 3 documents", matter: "Johnson Divorce", type: "document" },
                         { time: "Today 8:47 AM", user: `${currentUser ? currentUser.firstName + " " + currentUser.lastName : "Attorney"}`, action: "Sent message to client", matter: "Johnson Divorce", type: "message" },
                         { time: "Yesterday 5:01 PM", user: `${currentUser ? currentUser.firstName + " " + currentUser.lastName : "Attorney"}`, action: "Sent invoice INV-2024-009", matter: "Chen v. Realty", type: "billing" },
                         { time: "Yesterday 3:22 PM", user: "Amy Chen", action: "Logged in to client portal", matter: "Chen v. Realty", type: "auth" },
