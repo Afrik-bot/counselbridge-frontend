@@ -250,7 +250,7 @@ const Icon = ({ name, size = 16, color = "currentColor", className = "" }) => {
 const MESSAGES = {
   1: [
     { id: 1, sender: "client", name: "Client", body: "Hi, just wanted to check in — is there any update on when the financial disclosure needs to be filed? I'm a bit worried about the deadline.", time: "9:14 AM", read: true, internal: false },
-    { id: 2, sender: "attorney", name: `${currentUser ? currentUser.firstName + " " + currentUser.lastName : "Attorney"}`, body: "Hi Sarah, yes — we have a deadline of March 20 to file. I need to receive your bank statements and last two years of tax returns before I can complete the form. I sent you a document request last week — were you able to find those?", time: "10:32 AM", read: true, internal: false, aiGenerated: false },
+    { id: 2, sender: "attorney", name: "Attorney", body: "Hi Sarah, yes — we have a deadline of March 20 to file. I need to receive your bank statements and last two years of tax returns before I can complete the form. I sent you a document request last week — were you able to find those?", time: "10:32 AM", read: true, internal: false, aiGenerated: false },
     { id: 3, sender: "client", name: "Client", body: "Oh yes, I have them. I'll upload them tonight. Is there a specific format needed?", time: "11:05 AM", read: true, internal: false },
     { id: 4, sender: "staff", name: "Priya Patel (Paralegal)", body: "Note: Sarah called at 2pm — confirmed she'll upload by end of day.", time: "2:18 PM", read: true, internal: true },
     { id: 5, sender: "client", name: "Client", body: "I just tried to upload the bank statements but I'm getting an error. Can you help?", time: "8:47 PM", read: false, internal: false },
@@ -258,7 +258,7 @@ const MESSAGES = {
   ],
   3: [
     { id: 1, sender: "client", name: "Amy Chen", body: "Hello, I got a letter from opposing counsel today. It looks like they're requesting additional discovery. Is this normal?", time: "Yesterday, 3:22 PM", read: true, internal: false },
-    { id: 2, sender: "attorney", name: `${currentUser ? currentUser.firstName + " " + currentUser.lastName : "Attorney"}`, body: "Hi Amy, yes — this is a standard part of the litigation process. I've reviewed the letter and will respond on your behalf. No action required from you at this time.", time: "Yesterday, 5:01 PM", read: true, internal: false, aiGenerated: true },
+    { id: 2, sender: "attorney", name: "Attorney" + "Attorney", body: "Hi Amy, yes — this is a standard part of the litigation process. I've reviewed the letter and will respond on your behalf. No action required from you at this time.", time: "Yesterday, 5:01 PM", read: true, internal: false, aiGenerated: true },
     { id: 3, sender: "client", name: "Amy Chen", body: "Thank you. I just want to make sure we're on track for April 3rd.", time: "Today, 8:30 AM", read: false, internal: false },
   ],
 };
@@ -268,8 +268,8 @@ const DOCUMENTS = {
     { id: 1, name: "Bank Statements - Jan-Dec 2023.pdf", type: "Financial", size: "2.4 MB", uploaded: "Mar 10", by: "Client", aiLabel: "Financial Statement", confidence: 0.96, shared: true },
     { id: 2, name: "Tax Return 2022.pdf", type: "Financial", size: "1.1 MB", uploaded: "Mar 10", by: "Client", aiLabel: "Tax Document", confidence: 0.98, shared: true },
     { id: 3, name: "Tax Return 2023.pdf", type: "Financial", size: "1.3 MB", uploaded: "Mar 10", by: "Client", aiLabel: "Tax Document", confidence: 0.98, shared: true },
-    { id: 4, name: "Retainer Agreement - Johnson.pdf", type: "Contract", size: "0.4 MB", uploaded: "Feb 28", by: `${currentUser ? currentUser.firstName + " " + currentUser.lastName : "Attorney"}`, aiLabel: "Retainer Agreement", confidence: 0.99, shared: true },
-    { id: 5, name: "FL 150 Income Expense Declaration.docx", type: "Court Filing", size: "0.3 MB", uploaded: "Mar 5", by: `${currentUser ? currentUser.firstName + " " + currentUser.lastName : "Attorney"}`, aiLabel: "Court Filing", confidence: 0.91, shared: false },
+    { id: 4, name: "Retainer Agreement - Johnson.pdf", type: "Contract", size: "0.4 MB", uploaded: "Feb 28", by: "Attorney", aiLabel: "Retainer Agreement", confidence: 0.99, shared: true },
+    { id: 5, name: "FL 150 Income Expense Declaration.docx", type: "Court Filing", size: "0.3 MB", uploaded: "Mar 5", by: "Attorney", aiLabel: "Court Filing", confidence: 0.91, shared: false },
   ],
 };
 
