@@ -1,4 +1,4 @@
-// CounselBridge Portal v2.1 � Stripe Elements integrated
+import { useState, useEffect, useRef } from "react";
 
 // ─── DESIGN SYSTEM ────────────────────────────────────────────────────────────
 const css = `
@@ -805,74 +805,6 @@ const VideoCall = ({ contact, onClose, isClient }) => {
   return null;
 };
 
-
-// --- STRIPE PAYMENT MODAL -----------------------------------------------------
-const StripePaymentModal = ({ invoice, onClose, onPaid }) => {
-const useState = _useState;
-const useEffect = _useEffect;
-const useRef = _useRef;
-  const [stripeObj, setStripeObj] = useState(null);
-  const [clientSecret, setClientSecret] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [paying, setPaying] = useState(false);
-  const [error, setError] = useState('');
-  const [succeeded, setSucceeded] = useState(false);
-  const cardRef = useRef(null);
-  const cardElementRef = useRef(null);
-  const PUBLISHABLE_KEY = 'pk_test_mFGPDRnLh3fxMNQagtNff367';
-  const BASE = 'https://api.counselbridge.me';
-  useEffect(() => {
-    const init = (Stripe) => setStripeObj(Stripe(PUBLISHABLE_KEY));
-    if (window.Stripe) { init(window.Stripe); return; }
-    const script = document.createElement('script');
-    script.src = 'https://js.stripe.com/v3/';
-    script.onload = () => init(window.Stripe);
-    document.head.appendChild(script);
-  }, []);
-  useEffect(() => {
-    if (!invoice?.id) return;
-    const token = localStorage.getItem('cb_token');
-    fetch(BASE + '/api/invoices/' + invoice.id + '/payment-intent', { headers: { Authorization: 'Bearer ' + token } })
-      .then(r => r.json())
-      .then(data => { if (data.clientSecret) setClientSecret(data.clientSecret); else setError(data.error || 'Could not load payment details.'); })
-      .catch(() => setError('Could not connect to payment service.'))
-      .finally(() => setLoading(false));
-  }, [invoice?.id]);
-  useEffect(() => {
-    if (!stripeObj || !clientSecret || !cardRef.current || cardElementRef.current) return;
-    const els = stripeObj.elements({ clientSecret });
-    const card = els.create('card', { style: { base: { fontFamily: 'DM Sans, system-ui, sans-serif', fontSize: '15px', color: '#1E293B' }, invalid: { color: '#DC2626' } } });
-    card.mount(cardRef.current);
-    cardElementRef.current = card;
-    return () => { try { card.unmount(); } catch(e) {} cardElementRef.current = null; };
-  }, [stripeObj, clientSecret]);
-  const handlePay = async () => {
-    if (!stripeObj || !cardElementRef.current || !clientSecret) return;
-    setPaying(true); setError('');
-    const { error: stripeError, paymentIntent } = await stripeObj.confirmCardPayment(clientSecret, { payment_method: { card: cardElementRef.current } });
-    if (stripeError) { setError(stripeError.message); setPaying(false); }
-    else if (paymentIntent.status === 'succeeded') { setSucceeded(true); setTimeout(() => { onPaid(invoice.id); onClose(); }, 2200); }
-  };
-  const amt = typeof invoice.amount === 'number' ? invoice.amount.toLocaleString('en-US', { minimumFractionDigits: 2 }) : invoice.amount;
-  return React.createElement('div', { style: { position: 'fixed', inset: 0, background: 'rgba(15,34,64,0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(3px)' }, onClick: onClose },
-    React.createElement('div', { className: 'card fade-in', style: { width: 460, padding: 32 }, onClick: e => e.stopPropagation() },
-      succeeded
-        ? React.createElement('div', { style: { textAlign: 'center', padding: '20px 0' } },
-            React.createElement('div', { style: { fontSize: 17, fontWeight: 700, color: 'var(--gray-900)', marginBottom: 5 } }, 'Payment successful!'),
-            React.createElement('div', { style: { fontSize: 13.5, color: 'var(--gray-500)' } }, 'A receipt has been sent to your email.'))
-        : loading
-        ? React.createElement('div', { style: { textAlign: 'center', padding: '32px 0', color: 'var(--gray-400)' } }, 'Loading secure payment form...')
-        : React.createElement('div', null,
-            React.createElement('div', { style: { fontSize: 18, fontWeight: 700, color: 'var(--navy)', marginBottom: 16 } }, 'Pay Invoice ' + invoice.number),
-            React.createElement('div', { style: { fontSize: 24, fontWeight: 700, color: 'var(--navy)', marginBottom: 20 } }, '$' + amt),
-            React.createElement('div', { ref: cardRef, style: { border: '1.5px solid var(--gray-200)', borderRadius: 'var(--radius-sm)', padding: '12px 14px', background: 'white', minHeight: 46, marginBottom: 16 } }),
-            error && React.createElement('div', { style: { color: '#DC2626', fontSize: 13, marginBottom: 12 } }, error),
-            React.createElement('button', { className: 'btn btn-primary', style: { width: '100%', justifyContent: 'center', padding: '13px 0' }, disabled: paying || !stripeObj, onClick: handlePay }, paying ? 'Processing...' : 'Pay $' + amt)
-          )
-    )
-  );
-};
-
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function CounselBridge() {
   const [view, setView] = useState("login"); // login | attorney | client
@@ -892,7 +824,6 @@ export default function CounselBridge() {
   const [searchQ, setSearchQ] = useState("");
   const [clientMatterId] = useState(1);
   const [clientTab, setClientTab] = useState("updates");
- const [payingInvoice, setPayingInvoice] = useState(null);
   const [chatMsg, setChatMsg] = useState("");
   const [chatHistory, setChatHistory] = useState([
     { role: "ai", text: "Hi Sarah! I'm here to help with general questions about your case process. What would you like to know?" }
@@ -1320,7 +1251,7 @@ export default function CounselBridge() {
                     <div style={{ borderTop: "1px solid var(--gray-100)", paddingTop: 14 }}>
                       <div style={{ fontSize: 13, color: "var(--gray-500)", marginBottom: 10 }}>Pay securely via credit card, debit card, or bank transfer</div>
                       <div style={{ display: "flex", gap: 8 }}>
-                        <button className="btn btn-primary" style={{ flex: 1, justifyContent: "center" }} onClick={() => setPayingInvoice(inv)}><Icon name="lock" size={14} />Pay ${inv.amount.toLocaleString()} Now</button>
+                        <button className="btn btn-primary" style={{ flex: 1, justifyContent: "center" }}><Icon name="dollar" size={14} />Pay ${inv.amount.toLocaleString()} Now</button>
                         <button className="btn btn-secondary btn-sm"><Icon name="download" size={13} />Download</button>
                       </div>
                     </div>
@@ -1354,8 +1285,7 @@ export default function CounselBridge() {
           )}
         </div>
 
-        {payingInvoice && React.createElement(StripePaymentModal, { invoice: payingInvoice, onClose: () => setPayingInvoice(null), onPaid: (id) => { setPayingInvoice(null); } })}
-{/* AI Chat bubble */}
+        {/* AI Chat bubble */}
         <div style={{ position: "fixed", bottom: 20, right: 20, zIndex: 50 }}>
           <details style={{ position: "relative" }}>
             <summary style={{ listStyle: "none", cursor: "pointer" }}>
@@ -2889,9 +2819,3 @@ export default function CounselBridge() {
     </div>
   );
 }
-
-
-
-
-
-
