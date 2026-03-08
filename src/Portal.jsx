@@ -931,7 +931,7 @@ export default function CounselBridge() {
         <div style={{ textAlign: "center", marginBottom: 36 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 10 }}>
             <div style={{ width: 42, height: 42, background: "var(--blue)", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <span style={{ fontSize: 22 }}>⚖︎</span>
+              <span style={{ fontSize: 22 }}>⚖️</span>
             </div>
             <span style={{ fontFamily: "var(--font-serif)", fontSize: 28, color: "white", letterSpacing: "-0.5px" }}>CounselBridge</span>
           </div>
@@ -942,7 +942,7 @@ export default function CounselBridge() {
         <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: "var(--radius-md)", padding: 4, display: "flex", marginBottom: 24, border: "1px solid rgba(255,255,255,0.1)" }}>
           {["attorney", "client"].map(t => (
             <button key={t} onClick={() => setLoginType(t)} style={{ flex: 1, padding: "9px 0", borderRadius: "var(--radius-sm)", background: loginType === t ? "var(--white)" : "transparent", color: loginType === t ? "var(--navy)" : "rgba(255,255,255,0.6)", fontWeight: 600, fontSize: 13.5, cursor: "pointer", border: "none", transition: "all var(--transition)", fontFamily: "var(--font-sans)" }}>
-              {t === "attorney" ? "⚖  Attorney / Staff" : "👤  Client"}
+              {t === "attorney" ? "⚖️  Attorney / Staff" : "👤  Client"}
             </button>
           ))}
         </div>
@@ -1023,7 +1023,7 @@ export default function CounselBridge() {
         <div style={{ background: "var(--white)", borderBottom: "1px solid var(--gray-200)", padding: "0 24px", height: 60, display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 10, boxShadow: "var(--shadow-sm)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ width: 30, height: 30, background: "var(--blue)", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <span style={{ fontSize: 16 }}>⚖︎</span>
+              <span style={{ fontSize: 16 }}>⚖️</span>
             </div>
             <span style={{ fontFamily: "var(--font-serif)", fontSize: 18, color: "var(--navy)" }}>CounselBridge</span>
             <span style={{ fontSize: 12, color: "var(--gray-400)", marginLeft: 4 }}>· {currentFirm?.name || "Your Firm"}</span>
@@ -1750,7 +1750,7 @@ export default function CounselBridge() {
         <div style={{ padding: "18px 10px 16px", borderBottom: "1px solid rgba(255,255,255,0.08)", marginBottom: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 32, height: 32, background: "var(--blue)", borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <span style={{ fontSize: 17 }}>⚖︎</span>
+              <span style={{ fontSize: 17 }}>⚖️</span>
             </div>
             <span style={{ fontFamily: "var(--font-serif)", fontSize: 20, color: "white", letterSpacing: "-0.3px" }}>CounselBridge</span>
           </div>
