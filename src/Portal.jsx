@@ -1728,7 +1728,7 @@ export default function CounselBridge() {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ fontSize: 13.5, color: "var(--gray-600)" }}>{matters[0]?.client || "Your Client"}</span>
-            <Avatar name=selectedMatter?.client || "Client" size={32} color="teal" />
+           <Avatar name={selectedMatter?.client || "Client"} size={32} color="teal" />
             <button className="btn btn-ghost btn-sm" onClick={() => setView("login")}><Icon name="log-out" size={15} /></button>
           </div>
         </div>
