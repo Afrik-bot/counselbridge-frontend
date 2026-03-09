@@ -1015,12 +1015,12 @@ export default function CounselBridge() {
   // Load data after login
   useEffect(() => {
     if (view === "attorney") {
-      API.matters().then(data => { if (data) setMatters(data); });
-      API.invoices().then(data => { if (data) setInvoices(data); });
-      API.aiQueue().then(data => { if (data) setAiQueue(data); });
+      API.matters().then(data => { if (data) setMatters(Array.isArray(data) ? data : (data.matters || [])); });
+      API.invoices().then(data => { if (data) setInvoices(Array.isArray(data) ? data : (data.invoices || [])); });
+      API.aiQueue().then(data => { if (data) setAiQueue(Array.isArray(data) ? data : (data.queue || [])); });
     } else if (view === "client") {
-      API.matters().then(data => { if (data) setMatters(data); });
-      API.clientInvoices().then(data => { if (data) setInvoices(data); });
+      API.matters().then(data => { if (data) setMatters(Array.isArray(data) ? data : (data.matters || [])); });
+      API.clientInvoices().then(data => { if (data) setInvoices(Array.isArray(data) ? data : (data.invoices || [])); });
     }
   }, [view]);
 
