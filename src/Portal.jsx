@@ -839,6 +839,10 @@ export default function CounselBridge() {
   const [showAIModal, setShowAIModal] = useState(null);
   const [aiQueue, setAiQueue] = useState([]);
   const [invoices, setInvoices] = useState([]);
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
+
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadMatterId, setUploadMatterId] = useState(null);
   const [uploadingFiles, setUploadingFiles] = useState(false);
@@ -1054,16 +1058,17 @@ useEffect(() => {
           </p>
           <div style={{ marginBottom: 14 }}>
             <label>Email address</label>
-            <input className="input" type="email" defaultValue={loginType === "attorney" ? "alex.rivera@riveralaw.com" : "sarah.johnson@email.com"} placeholder="you@example.com" />
+            <input className="input" type="email" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} placeholder="you@example.com" />
           </div>
           <div style={{ marginBottom: 20 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
               <label style={{ marginBottom: 0 }}>Password</label>
               <span style={{ fontSize: 12.5, color: "var(--blue)", cursor: "pointer" }}>Forgot password?</span>
             </div>
-            <input className="input" type="password" defaultValue="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" />
+            <input className="input" type="password" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} placeholder="••••••••" />
           </div>
-          <button className="btn btn-primary" style={{ width: "100%", justifyContent: "center", padding: "11px 0", fontSize: 15, borderRadius: "var(--radius-md)" }} onClick={() => { setView(loginType === "attorney" ? "attorney" : "client"); setActivePage("dashboard"); }}>
+            {loginError && <div style={{ background: "var(--red-pale)", color: "var(--red)", border: "1px solid #FECACA", borderRadius: "var(--radius-sm)", padding: "10px 14px", fontSize: 13.5, marginBottom: 8 }}>{loginError}</div>}
+                <button className="btn btn-primary" style={{ width: "100%", justifyContent: "center", padding: "11px 0", fontSize: 15, borderRadius: "var(--radius-md)" }} onClick={async () => { try { const data = await API.login(loginEmail, loginPassword); if (!data?.token) { setLoginError("Invalid email or password"); return; } localStorage.setItem("cb_token", data.token); if (data.user) localStorage.setItem("cb_user", JSON.stringify(data.user)); if (data.firm) localStorage.setItem("cb_firm", JSON.stringify(data.firm)); setCurrentUser(data.user); setCurrentFirm(data.firm); setView(data.user?.role === "client" ? "client" : "attorney"); setActivePage("dashboard"); } catch(err) { setLoginError(err.message || "Login failed"); } }}>
             Sign In Securely <Icon name="arrow_right" size={16} />
           </button>
           {loginType === "client" && (
