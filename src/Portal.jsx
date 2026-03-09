@@ -807,6 +807,8 @@ const VideoCall = ({ contact, onClose, isClient }) => {
 
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function CounselBridge() {
+  const [currentFirm, setCurrentFirm] = useState(() => { try { return JSON.parse(localStorage.getItem('cb_firm')); } catch { return null; } });
+  const [currentUser, setCurrentUser] = useState(() => { try { return JSON.parse(localStorage.getItem('cb_user')); } catch { return null; } });
   const [view, setView] = useState("login"); // login | attorney | client
   const [loginType, setLoginType] = useState("attorney");
   const [activePage, setActivePage] = useState("dashboard");
@@ -2819,5 +2821,4 @@ export default function CounselBridge() {
     </div>
   );
 }
-
 
