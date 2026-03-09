@@ -410,7 +410,7 @@ const AIDraftModal = ({ draft, onApprove, onEdit, onReject, onClose }) => {
 
 
 // ─── VIDEO CALL COMPONENT ─────────────────────────────────────────────────────
-const VideoCall = ({ contact, onClose, isClient }) => {
+const VideoCall = ({ contact, onClose, isClient, currentUser }) => {
   const [callState, setCallState] = useState("lobby"); // lobby | connecting | active | ended
   const [micOn, setMicOn] = useState(true);
   const [camOn, setCamOn] = useState(true);
@@ -432,6 +432,18 @@ const VideoCall = ({ contact, onClose, isClient }) => {
   const localStreamRef = useRef(null);
   const timerRef = useRef(null);
   const pcRef = useRef(null);
+
+  // Derive display name for "You"
+  const myName = currentUser
+    ? (`${currentUser.firstName || ""} ${currentUser.lastName || ""}`.trim() || "You")
+    : (contact?.myName || "You");
+
+  // Wire stream to video element on every render so the ref is never stale
+  useEffect(() => {
+    if (localVideoRef.current && localStreamRef.current) {
+      localVideoRef.current.srcObject = localStreamRef.current;
+    }
+  });
 
   // Start local camera
   const startCamera = async () => {
@@ -492,7 +504,7 @@ const VideoCall = ({ contact, onClose, isClient }) => {
           system: "You are an AI legal assistant generating a meeting summary for an attorney. Be concise and professional. Format: 1 short paragraph summary, then a bulleted action items list.",
           messages: [{
             role: "user",
-            content: `Generate a brief meeting summary for a video consultation between attorney Alex Rivera and client ${contact?.name || "the client"} regarding ${contact?.matter || "their legal matter"}. The call lasted ${Math.floor(duration / 60)} minutes and ${duration % 60} seconds. Include 2-3 plausible action items based on a typical legal consultation.`
+            content: `Generate a brief meeting summary for a video consultation between attorney ${currentUser ? (currentUser.firstName + " " + currentUser.lastName).trim() : (contact?.myName || "the attorney")} and client ${contact?.name || "the client"} regarding ${contact?.matter || "their legal matter"}. The call lasted ${Math.floor(duration / 60)} minutes and ${duration % 60} seconds. Include 2-3 plausible action items based on a typical legal consultation.`
           }]
         })
       });
@@ -572,7 +584,7 @@ const VideoCall = ({ contact, onClose, isClient }) => {
           {isClient ? "Join Your Consultation" : `Call with ${contact?.name || "Client"}`}
         </div>
         <div style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", marginBottom: 28 }}>
-          {isClient ? `with ${currentUser?.name || "Your Attorney"} · ${currentFirm?.name || ""}` : contact?.matter || "Video Consultation"}
+          {isClient ? `with ${contact?.name || "Your Attorney"}${contact?.firmName ? " · " + contact.firmName : ""}` : contact?.matter || "Video Consultation"}
         </div>
         {permError && (
           <div style={{ background: "rgba(220,38,38,0.15)", border: "1px solid rgba(220,38,38,0.4)", borderRadius: 10, padding: "12px 16px", marginBottom: 20, fontSize: 13.5, color: "#FCA5A5", textAlign: "left" }}>
@@ -677,11 +689,11 @@ const VideoCall = ({ contact, onClose, isClient }) => {
             <video ref={localVideoRef} autoPlay playsInline muted style={{ width: "100%", height: "100%", objectFit: "cover", transform: "scaleX(-1)" }} />
           ) : (
             <div style={{ width: "100%", height: "100%", background: "#1a2a40", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Avatar name={isClient ? "Sarah Johnson" : "Alex Rivera"} size={44} color="blue" />
+              <Avatar name={myName} size={44} color="blue" />
             </div>
           )}
           <div style={{ position: "absolute", bottom: 6, left: 8, fontSize: 11, color: "white", background: "rgba(0,0,0,0.5)", padding: "2px 6px", borderRadius: 4 }}>
-            {isClient ? "You (Sarah)" : "You (Alex)"}
+            {`You (${myName.split(" ")[0] || "You"})`}
           </div>
           {!micOn && (
             <div style={{ position: "absolute", top: 6, right: 6, background: "rgba(220,38,38,0.8)", borderRadius: "50%", width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -1230,6 +1242,7 @@ export default function CounselBridge() {
             contact={videoCallContact}
             onClose={() => { setShowVideoCall(false); setVideoCallContact(null); }}
             isClient={true}
+            currentUser={currentUser}
           />
         )}
         {/* Header */}
@@ -1444,7 +1457,7 @@ export default function CounselBridge() {
               <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--gray-700)", marginBottom: 4 }}>Invoices</div>
               {invoices.filter(i => i.matterId === clientMatterId).map(inv => (
                 <div key={inv.id} className="card" style={{ padding: "18px 20px" }}>
-                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: inv.status !== "paid" ? 14 : 0 }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: inv.status?.toUpperCase() !== "PAID" ? 14 : 0 }}>
                     <div>
                       <div style={{ fontSize: 14, fontWeight: 600, color: "var(--gray-800)", marginBottom: 4 }}>{inv.desc}</div>
                       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -1452,24 +1465,24 @@ export default function CounselBridge() {
                         <span style={{ color: "var(--gray-300)" }}>·</span>
                         <span style={{ fontSize: 12.5, color: "var(--gray-400)" }}>Issued {inv.date}</span>
                         <span style={{ color: "var(--gray-300)" }}>·</span>
-                        <span style={{ fontSize: 12.5, color: inv.status === "overdue" ? "var(--red)" : "var(--gray-400)", fontWeight: inv.status === "overdue" ? 700 : 400 }}>Due {inv.due}</span>
+                        <span style={{ fontSize: 12.5, color: inv.status?.toUpperCase() === "OVERDUE" ? "var(--red)" : "var(--gray-400)", fontWeight: inv.status?.toUpperCase() === "OVERDUE" ? 700 : 400 }}>Due {inv.due}</span>
                       </div>
                     </div>
                     <div style={{ textAlign: "right" }}>
-                      <div style={{ fontSize: 20, fontWeight: 700, color: "var(--gray-900)", marginBottom: 4 }}>${inv.amount.toLocaleString()}</div>
+                      <div style={{ fontSize: 20, fontWeight: 700, color: "var(--gray-900)", marginBottom: 4 }}>${(inv.amountCents ? inv.amountCents/100 : (inv.amount || 0)).toLocaleString()}</div>
                       <StatusBadge status={inv.status} />
                     </div>
                   </div>
-                  {inv.status !== "paid" && (
+                  {inv.status?.toUpperCase() !== "PAID" && (
                     <div style={{ borderTop: "1px solid var(--gray-100)", paddingTop: 14 }}>
                       <div style={{ fontSize: 13, color: "var(--gray-500)", marginBottom: 10 }}>Pay securely via credit card, debit card, or bank transfer</div>
                       <div style={{ display: "flex", gap: 8 }}>
-                        <button className="btn btn-primary" style={{ flex: 1, justifyContent: "center" }} onClick={() => setPayingInvoice(inv)}><Icon name="lock" size={14} />Pay ${inv.amount.toLocaleString()} Now</button>
+                        <button className="btn btn-primary" style={{ flex: 1, justifyContent: "center" }} onClick={() => setPayingInvoice(inv)}><Icon name="lock" size={14} />Pay ${(inv.amountCents ? inv.amountCents/100 : (inv.amount || 0)).toLocaleString()} Now</button>
                         <button className="btn btn-secondary btn-sm"><Icon name="download" size={13} />Download</button>
                       </div>
                     </div>
                   )}
-                  {inv.status === "paid" && (
+                  {inv.status?.toUpperCase() === "PAID" && (
                     <div style={{ display: "flex", gap: 8, marginTop: 10, borderTop: "1px solid var(--gray-100)", paddingTop: 10 }}>
                       <button className="btn btn-secondary btn-sm"><Icon name="download" size={13} />Download Receipt</button>
                     </div>
@@ -1683,10 +1696,10 @@ export default function CounselBridge() {
 
                 <div className="card" style={{ padding: 18 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: "var(--gray-500)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Billing Summary</div>
-                  {[["Retainer", `$${matter.retainer.toLocaleString()}`], ["Billed", `$${inv.reduce((s,i) => s + i.amount, 0).toLocaleString()}`], ["Collected", `$${matter.paid.toLocaleString()}`], ["Outstanding", `$${inv.filter(i => i.status !== "paid").reduce((s,i) => s + i.amount, 0).toLocaleString()}`]].map(([k, v]) => (
+                  {[["Retainer", `$${(matter.retainer || matter.customFields?.retainerAmount || 0).toLocaleString()}`], ["Billed", `$${inv.reduce((s,i) => s + (i.amountCents ? i.amountCents/100 : (i.amount || 0)), 0).toLocaleString()}`], ["Collected", `$${(matter.paid || 0).toLocaleString()}`], ["Outstanding", `$${inv.filter(i => i.status?.toUpperCase() !== "PAID").reduce((s,i) => s + (i.amountCents ? i.amountCents/100 : (i.amount || 0)), 0).toLocaleString()}`]].map(([k, v]) => (
                     <div key={k} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid var(--gray-100)", fontSize: 13.5 }}>
                       <span style={{ color: "var(--gray-500)" }}>{k}</span>
-                      <span style={{ fontWeight: 600, color: k === "Outstanding" && inv.filter(i => i.status !== "paid").length > 0 ? "var(--red)" : "var(--gray-800)" }}>{v}</span>
+                      <span style={{ fontWeight: 600, color: k === "Outstanding" && inv.filter(i => i.status?.toUpperCase() !== "PAID").length > 0 ? "var(--red)" : "var(--gray-800)" }}>{v}</span>
                     </div>
                   ))}
                   <button className="btn btn-primary btn-sm" style={{ width: "100%", justifyContent: "center", marginTop: 12, fontSize: 12 }} onClick={() => setShowInvoiceModal(true)}><Icon name="plus" size={12} />Create Invoice</button>
@@ -1855,7 +1868,7 @@ export default function CounselBridge() {
                       <div style={{ fontSize: 12.5, color: "var(--gray-400)" }}>{invoice.number} · Created {invoice.date} · Due {invoice.due}</div>
                     </div>
                     <div style={{ textAlign: "right", marginRight: 12 }}>
-                      <div style={{ fontSize: 16, fontWeight: 700, color: "var(--gray-900)" }}>${invoice.amount.toLocaleString()}</div>
+                      <div style={{ fontSize: 16, fontWeight: 700, color: "var(--gray-900)" }}>${(invoice.amountCents ? invoice.amountCents/100 : (invoice.amount || 0)).toLocaleString()}</div>
                     </div>
                     <StatusBadge status={invoice.status} />
                     {invoice.status !== "paid" && <button className="btn btn-secondary btn-sm"><Icon name="send" size={13} />Remind</button>}
@@ -1880,6 +1893,7 @@ export default function CounselBridge() {
           contact={videoCallContact}
           onClose={() => { setShowVideoCall(false); setVideoCallContact(null); }}
           isClient={view === "client"}
+          currentUser={currentUser}
         />
       )}
 
@@ -2047,7 +2061,7 @@ export default function CounselBridge() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
                 <div>
                   <h1 style={{ fontFamily: "var(--font-serif)", fontSize: 24, color: "var(--navy)", marginBottom: 2 }}>Good morning, {currentUser?.firstName || "there"}</h1>
-                  <p style={{ fontSize: 13.5, color: "var(--gray-500)" }}>Tuesday, March 3, 2026 · {matters.filter(m => m.status === "active").length} active matters</p>
+                  <p style={{ fontSize: 13.5, color: "var(--gray-500)" }}>Tuesday, March 3, 2026 · {matters.filter(m => m.status?.toLowerCase() === "active").length} active matters</p>
                 </div>
                 <button className="btn btn-primary" onClick={() => setShowNewMatterModal(true)}><Icon name="plus" size={15} />New Matter</button>
               </div>
@@ -2055,9 +2069,9 @@ export default function CounselBridge() {
               {/* KPI row */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 20 }}>
                 {[
-                  { label: "Active Matters", value: matters.filter(m => m.status === "active").length, icon: "briefcase", color: "blue", sub: "+2 this week" },
-                  { label: "Unread Messages", value: matters.reduce((s,m) => s + m.unread, 0), icon: "message", color: "teal", sub: "Across 3 matters" },
-                  { label: "Pending Invoices", value: "$" + invoices.filter(i => i.status !== "paid").reduce((s,i) => s+i.amount,0).toLocaleString(), icon: "dollar", color: "amber", sub: `${invoices.filter(i=>i.status==="overdue").length} overdue` },
+                  { label: "Active Matters", value: matters.filter(m => m.status?.toLowerCase() === "active").length, icon: "briefcase", color: "blue", sub: "+2 this week" },
+                  { label: "Unread Messages", value: matters.reduce((s,m) => s + (m.unread || 0), 0), icon: "message", color: "teal", sub: "Across 3 matters" },
+                  { label: "Pending Invoices", value: "$" + invoices.filter(i => i.status?.toUpperCase() !== "PAID").reduce((s,i) => s + (i.amountCents ? i.amountCents/100 : (i.amount || 0)),0).toLocaleString(), icon: "dollar", color: "amber", sub: `${invoices.filter(i=>i.status?.toUpperCase()==="OVERDUE").length} overdue` },
                   { label: "AI Queue", value: aiQueue.length, icon: "cpu", color: "purple", sub: "Needs your approval" },
                 ].map(k => (
                   <div key={k.label} className="card" style={{ padding: "16px 18px", cursor: "pointer" }} onClick={() => { if(k.label === "AI Queue") setActivePage("ai-queue"); }}>
@@ -2335,8 +2349,8 @@ export default function CounselBridge() {
                       const matter = matters.find(m => m.id === inv.matterId);
                       return (
                         <div key={inv.id} className="card" style={{ padding: "14px 20px", display: "flex", alignItems: "center", gap: 14 }}>
-                          <div style={{ width: 42, height: 42, borderRadius: "var(--radius-md)", background: inv.status === "paid" ? "var(--green-pale)" : inv.status === "overdue" ? "var(--red-pale)" : "var(--blue-pale)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            <Icon name="dollar" size={18} color={inv.status === "paid" ? "var(--green)" : inv.status === "overdue" ? "var(--red)" : "var(--blue)"} />
+                          <div style={{ width: 42, height: 42, borderRadius: "var(--radius-md)", background: inv.status?.toUpperCase() === "PAID" ? "var(--green-pale)" : inv.status?.toUpperCase() === "OVERDUE" ? "var(--red-pale)" : "var(--blue-pale)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <Icon name="dollar" size={18} color={inv.status?.toUpperCase() === "PAID" ? "var(--green)" : inv.status?.toUpperCase() === "OVERDUE" ? "var(--red)" : "var(--blue)"} />
                           </div>
                           <div style={{ flex: 1 }}>
                             <div style={{ fontSize: 14, fontWeight: 600, color: "var(--gray-800)", marginBottom: 3 }}>{inv.desc}</div>
@@ -2346,13 +2360,13 @@ export default function CounselBridge() {
                               <span style={{ fontSize: 12.5, color: "var(--gray-500)" }}>{matter?.client}</span>
                               <span style={{ color: "var(--gray-300)" }}>·</span>
                               <span style={{ fontSize: 12.5, color: "var(--gray-400)" }}>Due {inv.due}</span>
-                              {inv.status === "overdue" && <span style={{ fontSize: 12, color: "var(--red)", fontWeight: 600 }}>OVERDUE</span>}
+                              {inv.status?.toUpperCase() === "OVERDUE" && <span style={{ fontSize: 12, color: "var(--red)", fontWeight: 600 }}>OVERDUE</span>}
                             </div>
                           </div>
-                          <div style={{ fontSize: 18, fontWeight: 700, color: "var(--gray-900)" }}>${inv.amount.toLocaleString()}</div>
+                          <div style={{ fontSize: 18, fontWeight: 700, color: "var(--gray-900)" }}>${(inv.amountCents ? inv.amountCents/100 : (inv.amount || 0)).toLocaleString()}</div>
                           <StatusBadge status={inv.status} />
                           <div style={{ display: "flex", gap: 6 }}>
-                            {inv.status !== "paid" && <button className="btn btn-secondary btn-sm"><Icon name="send" size={12} />Remind</button>}
+                            {inv.status?.toUpperCase() !== "PAID" && <button className="btn btn-secondary btn-sm"><Icon name="send" size={12} />Remind</button>}
                             <button className="btn btn-ghost btn-sm"><Icon name="eye" size={13} /></button>
                           </div>
                         </div>
@@ -2388,18 +2402,18 @@ export default function CounselBridge() {
                   {/* Retainers */}
                   <div className="card" style={{ padding: 18 }}>
                     <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--gray-800)", marginBottom: 14 }}>Retainer Balances</div>
-                    {matters.filter(m => m.retainer > 0).map(m => (
+                    {matters.filter(m => (m.retainer > 0) || (m.customFields?.retainerAmount > 0)).map(m => { const retainer = m.retainer || m.customFields?.retainerAmount || 0; const paid = m.paid || 0; return (
                       <div key={m.id} style={{ marginBottom: 12 }}>
                         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, fontSize: 13 }}>
                           <span style={{ color: "var(--gray-700)", fontWeight: 500 }}>{m.client}</span>
-                          <span style={{ color: "var(--gray-600)" }}>${(m.retainer - (m.retainer - m.paid > 0 ? m.retainer - m.paid : 0)).toLocaleString()} / ${m.retainer.toLocaleString()}</span>
+                          <span style={{ color: "var(--gray-600)" }}>${(retainer - (retainer - paid > 0 ? retainer - paid : 0)).toLocaleString()} / ${retainer.toLocaleString()}</span>
                         </div>
                         <div className="progress-bar">
-                          <div className="progress-fill" style={{ width: (m.paid / m.retainer * 100) + "%", background: m.paid / m.retainer < 0.3 ? "var(--red)" : m.paid / m.retainer < 0.6 ? "var(--amber)" : "var(--green)" }} />
+                          <div className="progress-fill" style={{ width: (retainer > 0 ? paid / retainer * 100 : 0) + "%", background: retainer > 0 && paid / retainer < 0.3 ? "var(--red)" : retainer > 0 && paid / retainer < 0.6 ? "var(--amber)" : "var(--green)" }} />
                         </div>
-                        <div style={{ fontSize: 11.5, color: "var(--gray-400)", marginTop: 3 }}>{Math.round(m.paid / m.retainer * 100)}% depleted</div>
+                        <div style={{ fontSize: 11.5, color: "var(--gray-400)", marginTop: 3 }}>{retainer > 0 ? Math.round(paid / retainer * 100) : 0}% depleted</div>
                       </div>
-                    ))}
+                    ); })}
                     <button className="btn btn-secondary btn-sm" style={{ width: "100%", justifyContent: "center", marginTop: 4 }}><Icon name="plus" size={13} />Request Replenishment</button>
                   </div>
                 </div>
