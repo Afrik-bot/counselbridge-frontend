@@ -836,7 +836,30 @@ export default function CounselBridge() {
   const [showVideoCall, setShowVideoCall] = useState(false);
   const [videoCallContact, setVideoCallContact] = useState(null);
   const [showNewMatterModal, setShowNewMatterModal] = useState(false);
-  const msgEndRef = useRef(null);
+const msgEndRef = useRef(null);
+// --- Load real data on login ---
+useEffect(() => {
+if (view !== "attorney") return;
+    Promise.all([API.matters(), API.aiQueue(), API.invoices()]).then(([mr, qr, ir]) => {
+      if (mr?.matters) setMatters(mr.matters.map(m => {
+        const client = m.members?.find(x => x.role === "client")?.user;
+        return { id: m.id, ref: m.referenceCode, title: m.title, client: client ? `${client.firstName} ${client.lastName}` : "—", clientEmail: client?.email || "", status: m.status?.toLowerCase() || "active", practice: m.practiceArea || "General", attorney: "", unread: 0, daysOpen: Math.floor((Date.now() - new Date(m.openedAt)) / 86400000), nextDeadline: null, urgency: "medium", retainer: 0, paid: 0, nextStep: m.nextStepClient || "", nextStepInternal: m.nextStepInternal || "", documents: m.documents || [], threads: m.threads || [], invoices: m.invoices || [], events: m.events || [], tasks: m.tasks || [] };
+      }));
+if (qr?.queue) setAiQueue(qr.queue.map(i => ({ id: i.id, matterId: i.matterId, matterTitle: i.matter?.title || "—", agent: i.agentName, type: i.outputType?.replace(/_/g, " ") || "AI Draft", preview: i.output, generated: new Date(i.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }), aiLogId: i.id })));
+      if (ir?.invoices) setInvoices(ir.invoices.map(i => ({ id: i.id, matterId: i.matterId, number: i.number, desc: i.description, amount: i.amountCents / 100, status: i.status?.toLowerCase(), date: new Date(i.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }), due: new Date(i.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" }) })));
+    }).catch(console.error);
+  }, [view]);
+useEffect(() => {
+    if (view !== "client") return;
+    API.clientMatters().then(mr => {
+      if (mr?.matters?.length) {
+        const m = mr.matters[0];
+        const client = m.members?.find(x => x.role === "client")?.user;
+        setClientMatter({ id: m.id, title: m.title, status: m.status?.toLowerCase() || "active", practice: m.practiceArea || "", nextStep: m.nextStepClient || "No updates at this time.", documents: m.documents || [], events: m.events || [], threads: m.threads || [] });
+        API.clientInvoices().then(ir => { if (ir?.invoices) setInvoices(ir.invoices.map(i => ({ id: i.id, matterId: i.matterId, number: i.number, desc: i.description, amount: i.amountCents / 100, status: i.status?.toLowerCase(), due: new Date(i.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" }) }))); }).catch(() => {});
+      }
+}).catch(console.error);
+  }, [view]);
 
   useEffect(() => {
     const el = document.getElementById("cb-styles");
@@ -1231,7 +1254,7 @@ export default function CounselBridge() {
 
               {/* Invoices */}
               <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--gray-700)", marginBottom: 4 }}>Invoices</div>
-              {INVOICES.filter(i => i.matterId === clientMatterId).map(inv => (
+              {invoices.filter(i => i.matterId === clientMatterId).map(inv => (
                 <div key={inv.id} className="card" style={{ padding: "18px 20px" }}>
                   <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: inv.status !== "paid" ? 14 : 0 }}>
                     <div>
@@ -1344,7 +1367,7 @@ export default function CounselBridge() {
     const visibleMsgs = showInternal ? matterMsgs : matterMsgs.filter(m => !m.internal);
     const docs = DOCUMENTS[matter.id] || [];
     const reqs = DOC_REQUESTS[matter.id] || [];
-    const inv = INVOICES.filter(i => i.matterId === matter.id);
+    const inv = invoices.filter(i => i.matterId === matter.id);
     const tl = TIMELINE[matter.id] || [];
 
     return (
@@ -1829,7 +1852,7 @@ export default function CounselBridge() {
                 {[
                   { label: "Active Matters", value: matters.filter(m => m.status === "active").length, icon: "briefcase", color: "blue", sub: "+2 this week" },
                   { label: "Unread Messages", value: matters.reduce((s,m) => s + m.unread, 0), icon: "message", color: "teal", sub: "Across 3 matters" },
-                  { label: "Pending Invoices", value: "$" + INVOICES.filter(i => i.status !== "paid").reduce((s,i) => s+i.amount,0).toLocaleString(), icon: "dollar", color: "amber", sub: "2 overdue" },
+                  { label: "Pending Invoices", value: "$" + invoices.filter(i => i.status !== "paid").reduce((s,i) => s+i.amount,0).toLocaleString(), icon: "dollar", color: "amber", sub: `${invoices.filter(i=>i.status==="overdue").length} overdue` },
                   { label: "AI Queue", value: aiQueue.length, icon: "cpu", color: "purple", sub: "Needs your approval" },
                 ].map(k => (
                   <div key={k.label} className="card" style={{ padding: "16px 18px", cursor: "pointer" }} onClick={() => { if(k.label === "AI Queue") setActivePage("ai-queue"); }}>
@@ -2821,4 +2844,7 @@ export default function CounselBridge() {
     </div>
   );
 }
+
+
+
 
