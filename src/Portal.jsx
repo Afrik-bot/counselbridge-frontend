@@ -572,7 +572,7 @@ const VideoCall = ({ contact, onClose, isClient }) => {
           {isClient ? "Join Your Consultation" : `Call with ${contact?.name || "Client"}`}
         </div>
         <div style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", marginBottom: 28 }}>
-          {isClient ? `with ${contact?.name || "Your Attorney"}` : contact?.matter || "Video Consultation"}
+          {isClient ? `with ${currentUser?.name || "Your Attorney"} · ${currentFirm?.name || ""}` : contact?.matter || "Video Consultation"}
         </div>
         {permError && (
           <div style={{ background: "rgba(220,38,38,0.15)", border: "1px solid rgba(220,38,38,0.4)", borderRadius: 10, padding: "12px 16px", marginBottom: 20, fontSize: 13.5, color: "#FCA5A5", textAlign: "left" }}>
@@ -805,82 +805,179 @@ const VideoCall = ({ contact, onClose, isClient }) => {
   return null;
 };
 
-const BASE = "https://api.counselbridge.me";
-const apiFetch = async (path, options = {}) => {
-  const token = localStorage.getItem("cb_token");
-  const headers = { "Content-Type": "application/json", ...(token ? { Authorization: "Bearer " + token } : {}) };
-  const res = await fetch(BASE + path, { ...options, headers });
-  if (res.status === 401) { console.warn("401 on", path); return null; }
-  const data = await res.json().catch(() => null);
-  if (!res.ok) throw new Error(data?.error || "Error " + res.status);
-  return data;
-};
-const API = {
-  login: (email, password) => apiFetch("/api/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
-  matters: () => apiFetch("/api/matters"),
-  getMatter: (id) => apiFetch("/api/matters/" + id),
-  createMatter: (d) => apiFetch("/api/matters", { method: "POST", body: JSON.stringify(d) }),
-  invoices: () => apiFetch("/api/invoices"),
-  clientInvoices: () => apiFetch("/api/invoices/client"),
-  aiQueue: () => apiFetch("/api/ai/queue"),
-  threads: (matterId) => apiFetch("/api/messages/matters/" + matterId + "/threads"),
-  sendMsg: (threadId, body, isInternal) => apiFetch("/api/messages/threads/" + threadId, { method: "POST", body: JSON.stringify({ body, isInternal }) }),
+
+// ─── STRIPE PAYMENT MODAL ─────────────────────────────────────────────────────
+const StripePaymentModal = ({ invoice, onClose, onPaid }) => {
+  const [stripeObj, setStripeObj] = useState(null);
+  const [clientSecret, setClientSecret] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [paying, setPaying] = useState(false);
+  const [error, setError] = useState("");
+  const [succeeded, setSucceeded] = useState(false);
+  const cardRef = useRef(null);
+  const cardElementRef = useRef(null);
+
+  const PUBLISHABLE_KEY = "pk_test_mFGPDRnLh3fxMNQagtNff367";
+  const BASE = "https://api.counselbridge.me";
+
+  useEffect(() => {
+    const init = (Stripe) => setStripeObj(Stripe(PUBLISHABLE_KEY));
+    if (window.Stripe) { init(window.Stripe); return; }
+    const script = document.createElement("script");
+    script.src = "https://js.stripe.com/v3/";
+    script.onload = () => init(window.Stripe);
+    document.head.appendChild(script);
+  }, []);
+
+  useEffect(() => {
+    if (!invoice?.id) return;
+    const token = localStorage.getItem("cb_token");
+    fetch(`${BASE}/api/invoices/${invoice.id}/payment-intent`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.clientSecret) setClientSecret(data.clientSecret);
+        else setError(data.error || "Could not load payment details.");
+      })
+      .catch(() => setError("Could not connect to payment service."))
+      .finally(() => setLoading(false));
+  }, [invoice?.id]);
+
+  useEffect(() => {
+    if (!stripeObj || !clientSecret || !cardRef.current || cardElementRef.current) return;
+    const els = stripeObj.elements({ clientSecret });
+    const card = els.create("card", {
+      style: {
+        base: { fontFamily: "'DM Sans', system-ui, sans-serif", fontSize: "15px", color: "#1E293B", "::placeholder": { color: "#94A3B8" } },
+        invalid: { color: "#DC2626" },
+      },
+    });
+    card.mount(cardRef.current);
+    cardElementRef.current = card;
+    return () => { try { card.unmount(); } catch(e) {} cardElementRef.current = null; };
+  }, [stripeObj, clientSecret]);
+
+  const handlePay = async () => {
+    if (!stripeObj || !cardElementRef.current || !clientSecret) return;
+    setPaying(true);
+    setError("");
+    const { error: stripeError, paymentIntent } = await stripeObj.confirmCardPayment(clientSecret, {
+      payment_method: { card: cardElementRef.current },
+    });
+    if (stripeError) {
+      setError(stripeError.message);
+      setPaying(false);
+    } else if (paymentIntent.status === "succeeded") {
+      setSucceeded(true);
+      setTimeout(() => { onPaid(invoice.id); onClose(); }, 2200);
+    }
+  };
+
+  const amt = typeof invoice.amount === "number"
+    ? invoice.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })
+    : String(invoice.amount);
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(15,34,64,0.6)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(3px)" }} onClick={onClose}>
+      <div className="card fade-in" style={{ width: 460, padding: 32, boxShadow: "var(--shadow-xl)" }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 22 }}>
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: "var(--navy)", fontFamily: "var(--font-serif)", marginBottom: 3 }}>Pay Invoice</div>
+            <div style={{ fontSize: 12.5, color: "var(--gray-400)" }}>{invoice.number} · {invoice.desc}</div>
+          </div>
+          <button className="btn btn-ghost btn-sm" onClick={onClose} style={{ marginTop: -4 }}><Icon name="x" size={16} /></button>
+        </div>
+        <div style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: "var(--radius-md)", padding: "14px 20px", marginBottom: 22, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ fontSize: 13, color: "#2563EB", fontWeight: 500 }}>Amount due</span>
+          <span style={{ fontSize: 26, fontWeight: 700, color: "var(--navy)", fontFamily: "var(--font-serif)" }}>${amt}</span>
+        </div>
+        {succeeded ? (
+          <div style={{ textAlign: "center", padding: "20px 0 8px" }}>
+            <div style={{ width: 60, height: 60, background: "#DCFCE7", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px" }}>
+              <Icon name="check-circle" size={30} color="#16A34A" />
+            </div>
+            <div style={{ fontSize: 17, fontWeight: 700, color: "var(--gray-900)", marginBottom: 5 }}>Payment successful!</div>
+            <div style={{ fontSize: 13.5, color: "var(--gray-500)" }}>A receipt has been sent to your email.</div>
+          </div>
+        ) : loading ? (
+          <div style={{ textAlign: "center", padding: "32px 0", color: "var(--gray-400)", fontSize: 14 }}>
+            <div style={{ width: 22, height: 22, border: "2px solid var(--gray-200)", borderTopColor: "var(--blue)", borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto 12px" }} />
+            Loading secure payment form...
+          </div>
+        ) : error && !clientSecret ? (
+          <div style={{ background: "#FEF2F2", color: "#DC2626", border: "1px solid #FECACA", borderRadius: "var(--radius-sm)", padding: "11px 14px", fontSize: 13.5 }}>{error}</div>
+        ) : (
+          <>
+            <div style={{ marginBottom: 6 }}>
+              <label style={{ fontSize: 12.5, fontWeight: 600, color: "var(--gray-600)", marginBottom: 7, display: "block", textTransform: "uppercase", letterSpacing: "0.05em" }}>Card details</label>
+              <div ref={cardRef} style={{ border: "1.5px solid var(--gray-200)", borderRadius: "var(--radius-sm)", padding: "12px 14px", background: "white", minHeight: 46 }} />
+            </div>
+            {error && <div style={{ background: "#FEF2F2", color: "#DC2626", border: "1px solid #FECACA", borderRadius: "var(--radius-sm)", padding: "9px 13px", fontSize: 13, marginTop: 8 }}>{error}</div>}
+            <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: "var(--gray-400)", margin: "12px 0 20px" }}>
+              <Icon name="lock" size={11} color="var(--gray-400)" />
+              Secured by Stripe · 256-bit TLS · Card details never touch our servers
+            </div>
+            <button
+              className="btn btn-primary"
+              style={{ width: "100%", justifyContent: "center", padding: "13px 0", fontSize: 15, borderRadius: "var(--radius-md)", gap: 8 }}
+              disabled={paying || !stripeObj}
+              onClick={handlePay}
+            >
+              {paying ? (
+                <>
+                  <div style={{ width: 16, height: 16, border: "2px solid rgba(255,255,255,0.35)", borderTopColor: "white", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <Icon name="lock" size={14} color="white" />
+                  Pay ${amt}
+                </>
+              )}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
 };
 
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function CounselBridge() {
-  const [currentFirm, setCurrentFirm] = useState(() => { try { return JSON.parse(localStorage.getItem('cb_firm')); } catch { return null; } });
-  const [currentUser, setCurrentUser] = useState(() => { try { return JSON.parse(localStorage.getItem('cb_user')); } catch { return null; } });
-  const [view, setView] = useState("login"); // login | attorney | client
+  const [currentUser, setCurrentUser] = useState(() => { try { return JSON.parse(localStorage.getItem("cb_user")); } catch { return null; } });
+  const [currentFirm, setCurrentFirm] = useState(() => { try { return JSON.parse(localStorage.getItem("cb_firm")); } catch { return null; } });
+  const [view, setView] = useState(() => {
+    try {
+      const token = localStorage.getItem("cb_token");
+      const user = JSON.parse(localStorage.getItem("cb_user"));
+      if (token && user) return user.role === "CLIENT" ? "client" : "attorney";
+    } catch {}
+    return "login";
+  });
   const [loginType, setLoginType] = useState("attorney");
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
   const [activePage, setActivePage] = useState("dashboard");
   const [selectedMatter, setSelectedMatter] = useState(null);
   const [matterTab, setMatterTab] = useState("overview");
   const [showAIModal, setShowAIModal] = useState(null);
   const [aiQueue, setAiQueue] = useState([]);
-  const [invoices, setInvoices] = useState([]);
-  const [loginEmail, setLoginEmail] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
-  const [loginError, setLoginError] = useState("");
-
-  const [showUploadModal, setShowUploadModal] = useState(false);
-  const [uploadMatterId, setUploadMatterId] = useState(null);
-  const [uploadingFiles, setUploadingFiles] = useState(false);
-  const fileInputRef = React.useRef(null);
-
-  const handleFileUpload = async (matterId, files, accessLevel) => {
-    if (!files || files.length === 0) return;
-    setUploadingFiles(true);
-    try {
-      const formData = new FormData();
-      Array.from(files).forEach(f => formData.append("files", f));
-      formData.append("accessLevel", accessLevel || "INTERNAL");
-      const token = localStorage.getItem("cb_token");
-      const res = await fetch("https://api.counselbridge.me/api/documents/upload/" + matterId, {
-        method: "POST",
-        headers: { Authorization: "Bearer " + token },
-        body: formData,
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Upload failed");
-      alert(data.count + " file(s) uploaded successfully!");
-      setShowUploadModal(false);
-    } catch (err) {
-      alert("Upload failed: " + err.message);
-    }
-    setUploadingFiles(false);
-  };
-
-  const [messages, setMessages] = useState(MESSAGES);
+  const [messages, setMessages] = useState({});
   const [newMsg, setNewMsg] = useState("");
   const [showInternal, setShowInternal] = useState(false);
   const [aiTyping, setAiTyping] = useState(false);
   const [aiDraft, setAiDraft] = useState("");
-  const [matters, setMatters] = useState(MATTERS);
+  const [matters, setMatters] = useState([]);
+  const [invoices, setInvoices] = useState([]);
+  const [documents, setDocuments] = useState({});
   const [notifications, setNotifications] = useState(3);
   const [searchQ, setSearchQ] = useState("");
   const [clientMatterId] = useState(1);
   const [clientTab, setClientTab] = useState("updates");
+  const [payingInvoice, setPayingInvoice] = useState(null);
   const [chatMsg, setChatMsg] = useState("");
   const [chatHistory, setChatHistory] = useState([
     { role: "ai", text: "Hi Sarah! I'm here to help with general questions about your case process. What would you like to know?" }
@@ -891,50 +988,40 @@ export default function CounselBridge() {
   const [showVideoCall, setShowVideoCall] = useState(false);
   const [videoCallContact, setVideoCallContact] = useState(null);
   const [showNewMatterModal, setShowNewMatterModal] = useState(false);
-const msgEndRef = useRef(null);
+  const msgEndRef = useRef(null);
 
-  // Load real data from API
+
+  // ─── API LAYER ─────────────────────────────────────────────────────────────
+  const API_BASE = "https://api.counselbridge.me";
+  const apiFetch = async (path, options = {}) => {
+    const token = localStorage.getItem("cb_token");
+    const headers = { "Content-Type": "application/json", ...(token ? { Authorization: "Bearer " + token } : {}) };
+    const res = await fetch(API_BASE + path, { ...options, headers });
+    if (res.status === 401) { console.warn("401 on", path); return null; }
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(data?.error || "Error " + res.status);
+    return data;
+  };
+  const API = {
+    login: (email, password) => apiFetch("/api/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
+    matters: () => apiFetch("/api/matters"),
+    getMatter: (id) => apiFetch("/api/matters/" + id),
+    createMatter: (d) => apiFetch("/api/matters", { method: "POST", body: JSON.stringify(d) }),
+    invoices: () => apiFetch("/api/invoices"),
+    clientInvoices: () => apiFetch("/api/invoices/client"),
+    aiQueue: () => apiFetch("/api/ai/queue"),
+  };
+
+  // Load data after login
   useEffect(() => {
-    if (view !== "attorney") return;
-    Promise.all([API.matters(), API.aiQueue(), API.invoices()]).then(([mr, qr, ir]) => {
-      if (mr?.matters) setMatters(mr.matters.map(m => {
-        const client = m.members?.find(x => x.role === "client")?.user;
-        return { id: m.id, ref: m.referenceCode, title: m.title, client: client ? client.firstName + " " + client.lastName : "�", clientEmail: client?.email || "", status: m.status?.toLowerCase() || "active", practice: m.practiceArea || "General", attorney: "", unread: 0, daysOpen: Math.floor((Date.now() - new Date(m.openedAt)) / 86400000), nextDeadline: null, urgency: "medium", retainer: 0, paid: 0, nextStep: m.nextStepClient || "", nextStepInternal: m.nextStepInternal || "", documents: m.documents || [], threads: m.threads || [], invoices: m.invoices || [], events: m.events || [], tasks: m.tasks || [] };
-      }));
-      if (qr?.queue) setAiQueue(qr.queue.map(i => ({ id: i.id, matterId: i.matterId, matterTitle: i.matter?.title || "�", agent: i.agentName, type: i.outputType?.replace(/_/g, " ") || "AI Draft", preview: i.output, generated: new Date(i.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }), aiLogId: i.id })));
-      if (ir?.invoices) setInvoices(ir.invoices.map(i => ({ id: i.id, matterId: i.matterId, number: i.number, desc: i.description, amount: i.amountCents / 100, status: i.status?.toLowerCase(), date: new Date(i.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }), due: new Date(i.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" }) })));
-    }).catch(console.error);
-  }, [view]);
-
-  useEffect(() => {
-    if (view !== "client") return;
-    API.clientInvoices().then(ir => {
-      if (ir?.invoices) setInvoices(ir.invoices.map(i => ({ id: i.id, matterId: i.matterId, number: i.number, desc: i.description, amount: i.amountCents / 100, status: i.status?.toLowerCase(), due: new Date(i.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" }) })));
-    }).catch(console.error);
-  }, [view]);
-
-// --- Load real data on login ---
-useEffect(() => {
-if (view !== "attorney") return;
-    Promise.all([API.matters(), API.aiQueue(), API.invoices()]).then(([mr, qr, ir]) => {
-      if (mr?.matters) setMatters(mr.matters.map(m => {
-        const client = m.members?.find(x => x.role === "client")?.user;
-        return { id: m.id, ref: m.referenceCode, title: m.title, client: client ? `${client.firstName} ${client.lastName}` : "�", clientEmail: client?.email || "", status: m.status?.toLowerCase() || "active", practice: m.practiceArea || "General", attorney: "", unread: 0, daysOpen: Math.floor((Date.now() - new Date(m.openedAt)) / 86400000), nextDeadline: null, urgency: "medium", retainer: 0, paid: 0, nextStep: m.nextStepClient || "", nextStepInternal: m.nextStepInternal || "", documents: m.documents || [], threads: m.threads || [], invoices: m.invoices || [], events: m.events || [], tasks: m.tasks || [] };
-      }));
-if (qr?.queue) setAiQueue(qr.queue.map(i => ({ id: i.id, matterId: i.matterId, matterTitle: i.matter?.title || "�", agent: i.agentName, type: i.outputType?.replace(/_/g, " ") || "AI Draft", preview: i.output, generated: new Date(i.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }), aiLogId: i.id })));
-      if (ir?.invoices) setInvoices(ir.invoices.map(i => ({ id: i.id, matterId: i.matterId, number: i.number, desc: i.description, amount: i.amountCents / 100, status: i.status?.toLowerCase(), date: new Date(i.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }), due: new Date(i.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" }) })));
-    }).catch(console.error);
-  }, [view]);
-useEffect(() => {
-    if (view !== "client") return;
-    API.clientMatters().then(mr => {
-      if (mr?.matters?.length) {
-        const m = mr.matters[0];
-        const client = m.members?.find(x => x.role === "client")?.user;
-        setClientMatter({ id: m.id, title: m.title, status: m.status?.toLowerCase() || "active", practice: m.practiceArea || "", nextStep: m.nextStepClient || "No updates at this time.", documents: m.documents || [], events: m.events || [], threads: m.threads || [] });
-        API.clientInvoices().then(ir => { if (ir?.invoices) setInvoices(ir.invoices.map(i => ({ id: i.id, matterId: i.matterId, number: i.number, desc: i.description, amount: i.amountCents / 100, status: i.status?.toLowerCase(), due: new Date(i.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" }) }))); }).catch(() => {});
-      }
-}).catch(console.error);
+    if (view === "attorney") {
+      API.matters().then(data => { if (data) setMatters(data); });
+      API.invoices().then(data => { if (data) setInvoices(data); });
+      API.aiQueue().then(data => { if (data) setAiQueue(data); });
+    } else if (view === "client") {
+      API.matters().then(data => { if (data) setMatters(data); });
+      API.clientInvoices().then(data => { if (data) setInvoices(data); });
+    }
   }, [view]);
 
   useEffect(() => {
@@ -1032,7 +1119,7 @@ useEffect(() => {
         <div style={{ textAlign: "center", marginBottom: 36 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 10 }}>
             <div style={{ width: 42, height: 42, background: "var(--blue)", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <span style={{ fontSize: 22 }}>⚖️</span>
+              <Icon name="shield" size={22} color="white" />
             </div>
             <span style={{ fontFamily: "var(--font-serif)", fontSize: 28, color: "white", letterSpacing: "-0.5px" }}>CounselBridge</span>
           </div>
@@ -1058,19 +1145,43 @@ useEffect(() => {
           </p>
           <div style={{ marginBottom: 14 }}>
             <label>Email address</label>
-            <input className="input" type="email" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} placeholder="you@example.com" />
+            <input className="input" type="email" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" />
           </div>
           <div style={{ marginBottom: 20 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
               <label style={{ marginBottom: 0 }}>Password</label>
               <span style={{ fontSize: 12.5, color: "var(--blue)", cursor: "pointer" }}>Forgot password?</span>
             </div>
-            <input className="input" type="password" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} placeholder="��������" />
+            <input className="input" type="password" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} placeholder="Password" autoComplete="current-password" />
           </div>
-            {loginError && <div style={{ background: "var(--red-pale)", color: "var(--red)", border: "1px solid #FECACA", borderRadius: "var(--radius-sm)", padding: "10px 14px", fontSize: 13.5, marginBottom: 8 }}>{loginError}</div>}
-                <button className="btn btn-primary" style={{ width: "100%", justifyContent: "center", padding: "11px 0", fontSize: 15, borderRadius: "var(--radius-md)" }} onClick={async () => { try { const data = await API.login(loginEmail, loginPassword); if (!data?.token) { setLoginError("Invalid email or password"); return; } localStorage.setItem("cb_token", data.token); if (data.user) localStorage.setItem("cb_user", JSON.stringify(data.user)); if (data.firm) localStorage.setItem("cb_firm", JSON.stringify(data.firm)); setCurrentUser(data.user); setCurrentFirm(data.firm); setView(data.user?.role === "client" ? "client" : "attorney"); setActivePage("dashboard"); } catch(err) { setLoginError(err.message || "Login failed"); } }}>
-            Sign In Securely <Icon name="arrow_right" size={16} />
+          <button className="btn btn-primary" style={{ width: "100%", justifyContent: "center", padding: "11px 0", fontSize: 15, borderRadius: "var(--radius-md)" }} onClick={async () => {
+    setLoginError("");
+    setLoginLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: loginEmail, password: loginPassword })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Login failed");
+      localStorage.setItem("cb_token", data.accessToken);
+      localStorage.setItem("cb_refresh", data.refreshToken);
+      localStorage.setItem("cb_user", JSON.stringify(data.user));
+      localStorage.setItem("cb_firm", JSON.stringify(data.firm));
+      setCurrentUser(data.user);
+      setCurrentFirm(data.firm);
+      const role = data.user.role;
+      setView(role === "CLIENT" ? "client" : "attorney");
+      setActivePage("dashboard");
+    } catch(e) {
+      setLoginError(e.message || "Invalid email or password");
+    }
+    setLoginLoading(false);
+  }} disabled={loginLoading}>
+            {loginLoading ? "Signing in..." : "Sign In Securely"} <Icon name="arrow_right" size={16} />
           </button>
+          {loginError && <div style={{ color: "var(--red)", fontSize: 13, textAlign: "center", marginTop: 8 }}>{loginError}</div>}
           {loginType === "client" && (
             <>
               <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "16px 0" }}>
@@ -1103,7 +1214,7 @@ useEffect(() => {
 
   // ─── CLIENT PORTAL ─────────────────────────────────────────────────────────
   if (view === "client") {
-    const matter = MATTERS.find(m => m.id === clientMatterId);
+    const matter = matters.find(m => m.id === clientMatterId);
     const docReqs = DOC_REQUESTS[clientMatterId] || [];
     const timeline = TIMELINE[clientMatterId] || [];
     const clientMsgs = (messages[clientMatterId] || []).filter(m => !m.internal);
@@ -1125,7 +1236,7 @@ useEffect(() => {
         <div style={{ background: "var(--white)", borderBottom: "1px solid var(--gray-200)", padding: "0 24px", height: 60, display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 10, boxShadow: "var(--shadow-sm)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ width: 30, height: 30, background: "var(--blue)", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <span style={{ fontSize: 16 }}>⚖️</span>
+              <Icon name="shield" size={16} color="white" />
             </div>
             <span style={{ fontFamily: "var(--font-serif)", fontSize: 18, color: "var(--navy)" }}>CounselBridge</span>
             <span style={{ fontSize: 12, color: "var(--gray-400)", marginLeft: 4 }}>· {currentFirm?.name || "Your Firm"}</span>
@@ -1133,7 +1244,7 @@ useEffect(() => {
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ fontSize: 13.5, color: "var(--gray-600)" }}>Sarah Johnson</span>
             <Avatar name="Sarah Johnson" size={32} color="teal" />
-            <button className="btn btn-ghost btn-sm" onClick={() => setView("login")}><Icon name="log-out" size={15} /></button>
+            <button className="btn btn-ghost btn-sm" onClick={() => { localStorage.removeItem("cb_token"); localStorage.removeItem("cb_refresh"); localStorage.removeItem("cb_user"); localStorage.removeItem("cb_firm"); setCurrentUser(null); setCurrentFirm(null); setMatters([]); setMessages({}); setInvoices([]); setAiQueue([]); setView("login"); }}><Icon name="log-out" size={15} /></button>
           </div>
         </div>
 
@@ -1171,7 +1282,7 @@ useEffect(() => {
                 ))}
               </div>
               <button className="btn btn-sm" style={{ background: "var(--amber)", color: "white" }}>
-                 <Icon name="upload" size={13} />Upload Documents</button><input type="file" multiple style={{display:"none"}} id="client-upload-input" onChange={e => handleFileUpload(clientMatterId, e.target.files, "CLIENT")} /><label htmlFor="client-upload-input" className="btn btn-primary btn-sm" style={{cursor:"pointer"}}><Icon name="upload" size={13} />Upload Documents</label
+                <Icon name="upload" size={13} />Upload Documents
               </button>
             </div>
           )}
@@ -1238,8 +1349,8 @@ useEffect(() => {
                 <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--gray-200)", display: "flex", alignItems: "center", gap: 10 }}>
                   <Avatar name="Alex Rivera" size={28} color="blue" />
                   <div>
-                    <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--gray-800)" }}>Alex Rivera</div>
-                    <div style={{ fontSize: 12, color: "var(--gray-400)" }}>Rivera & Associates · Your Attorney</div>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--gray-800)" }}>{currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "Attorney"}</div>
+                    <div style={{ fontSize: 12, color: "var(--gray-400)" }}>{currentFirm?.name || "Your Firm"} · Your Attorney</div>
                   </div>
                   <div style={{ marginLeft: "auto" }}>
                     <button className="btn btn-secondary btn-sm" onClick={() => { setVideoCallContact({ name: "Alex Rivera", matter: matter.title }); setShowVideoCall(true); }}><Icon name="video" size={13} />Video Call</button>
@@ -1290,7 +1401,7 @@ useEffect(() => {
               </div>
               <div className="card" style={{ padding: 20 }}>
                 <div style={{ fontSize: 14, fontWeight: 600, color: "var(--gray-800)", marginBottom: 14 }}>Shared Documents</div>
-                {(DOCUMENTS[1] || []).filter(d => d.shared).map(doc => (
+                {(documents[matter?.id] || []).filter(d => d.shared).map(doc => (
                   <div key={doc.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid var(--gray-100)" }}>
                     <div style={{ width: 32, height: 32, background: "var(--blue-pale)", borderRadius: "var(--radius-sm)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <Icon name="file" size={14} color="var(--blue)" />
@@ -1353,7 +1464,7 @@ useEffect(() => {
                     <div style={{ borderTop: "1px solid var(--gray-100)", paddingTop: 14 }}>
                       <div style={{ fontSize: 13, color: "var(--gray-500)", marginBottom: 10 }}>Pay securely via credit card, debit card, or bank transfer</div>
                       <div style={{ display: "flex", gap: 8 }}>
-                        <button className="btn btn-primary" style={{ flex: 1, justifyContent: "center" }}><Icon name="dollar" size={14} />Pay ${inv.amount.toLocaleString()} Now</button>
+                        <button className="btn btn-primary" style={{ flex: 1, justifyContent: "center" }} onClick={() => setPayingInvoice(inv)}><Icon name="lock" size={14} />Pay ${inv.amount.toLocaleString()} Now</button>
                         <button className="btn btn-secondary btn-sm"><Icon name="download" size={13} />Download</button>
                       </div>
                     </div>
@@ -1386,6 +1497,17 @@ useEffect(() => {
             </div>
           )}
         </div>
+
+        {/* Stripe Payment Modal */}
+        {payingInvoice && (
+          <StripePaymentModal
+            invoice={payingInvoice}
+            onClose={() => setPayingInvoice(null)}
+            onPaid={(id) => {
+              setPayingInvoice(null);
+            }}
+          />
+        )}
 
         {/* AI Chat bubble */}
         <div style={{ position: "fixed", bottom: 20, right: 20, zIndex: 50 }}>
@@ -1442,9 +1564,9 @@ useEffect(() => {
   const MatterDetail = ({ matter }) => {
     const matterMsgs = (messages[matter.id] || []);
     const visibleMsgs = showInternal ? matterMsgs : matterMsgs.filter(m => !m.internal);
-    const docs = DOCUMENTS[matter.id] || [];
+    const docs = [];
     const reqs = DOC_REQUESTS[matter.id] || [];
-    const inv = invoices.filter(i => i.matterId === matter.id);
+    const inv = [];
     const tl = TIMELINE[matter.id] || [];
 
     return (
@@ -1665,7 +1787,7 @@ useEffect(() => {
                 <h3 style={{ fontSize: 15, fontWeight: 600, color: "var(--gray-800)" }}>Matter Documents</h3>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button className="btn btn-secondary btn-sm"><Icon name="file" size={13} />Request Documents</button>
-                  <button className="btn btn-primary btn-sm" onClick={() => { setUploadMatterId(selectedMatter?.id); document.getElementById("matter-upload-input").click(); }}><Icon name="upload" size={13} />Upload</button><input type="file" id="matter-upload-input" multiple style={{display:"none"}} onChange={e => handleFileUpload(uploadMatterId, e.target.files, "INTERNAL")} />
+                  <button className="btn btn-primary btn-sm"><Icon name="upload" size={13} />Upload</button>
                 </div>
               </div>
               <div style={{ display: "grid", gap: 8 }}>
@@ -1852,7 +1974,7 @@ useEffect(() => {
         <div style={{ padding: "18px 10px 16px", borderBottom: "1px solid rgba(255,255,255,0.08)", marginBottom: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 32, height: 32, background: "var(--blue)", borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <span style={{ fontSize: 17 }}>⚖️</span>
+              <Icon name="shield" size={17} color="white" />
             </div>
             <span style={{ fontFamily: "var(--font-serif)", fontSize: 20, color: "white", letterSpacing: "-0.3px" }}>CounselBridge</span>
           </div>
@@ -1872,7 +1994,7 @@ useEffect(() => {
           <div style={{ flex: 1 }} />
           <div style={{ height: 1, background: "rgba(255,255,255,0.08)", margin: "8px 2px" }} />
           <NavItem icon="settings" label="Settings" page="settings" />
-          <div className="nav-item" onClick={() => setView("login")} style={{ color: "rgba(255,255,255,0.5)" }}>
+          <div className="nav-item" onClick={() => { localStorage.removeItem("cb_token"); localStorage.removeItem("cb_refresh"); localStorage.removeItem("cb_user"); localStorage.removeItem("cb_firm"); setCurrentUser(null); setCurrentFirm(null); setMatters([]); setMessages({}); setInvoices([]); setAiQueue([]); setView("login"); }} style={{ color: "rgba(255,255,255,0.5)" }}>
             <Icon name="log-out" size={16} color="rgba(255,255,255,0.5)" />
             <span>Sign Out</span>
           </div>
@@ -1897,12 +2019,18 @@ useEffect(() => {
           <div style={{ display: "flex", alignItems: "center", gap: 8, paddingLeft: 8, borderLeft: "1px solid var(--gray-200)" }}>
             <Avatar name="Alex Rivera" size={30} color="blue" />
             <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--gray-800)", lineHeight: 1.2 }}>Alex Rivera</div>
-              <div style={{ fontSize: 11, color: "var(--gray-400)" }}>Attorney · Pro Plan</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--gray-800)", lineHeight: 1.2 }}>{currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "Attorney"}</div>
+              <div style={{ fontSize: 11, color: "var(--gray-400)" }}>{currentUser?.role || "Attorney"} · {currentFirm?.name || "Your Firm"}</div>
             </div>
           </div>
           <button className="btn btn-sm" style={{ background: "rgba(37,99,235,0.1)", color: "var(--blue)", border: "1px solid var(--blue-pale2)" }} onClick={() => setView("client")}>
             👤 Client View
+          </button>
+          <button className="btn btn-sm btn-primary" style={{ gap: 6 }} onClick={() => {
+            setVideoCallContact({ name: "Client", matter: "Ad-hoc consultation", myName: currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "You" });
+            setShowVideoCall(true);
+          }}>
+            <Icon name="video" size={13} color="white" /> Start Call
           </button>
         </div>
 
@@ -1918,7 +2046,7 @@ useEffect(() => {
             <div className="scroll-y" style={{ flex: 1, padding: 24 }} >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
                 <div>
-                  <h1 style={{ fontFamily: "var(--font-serif)", fontSize: 24, color: "var(--navy)", marginBottom: 2 }}>Good morning, Alex</h1>
+                  <h1 style={{ fontFamily: "var(--font-serif)", fontSize: 24, color: "var(--navy)", marginBottom: 2 }}>Good morning, {currentUser?.firstName || "there"}</h1>
                   <p style={{ fontSize: 13.5, color: "var(--gray-500)" }}>Tuesday, March 3, 2026 · {matters.filter(m => m.status === "active").length} active matters</p>
                 </div>
                 <button className="btn btn-primary" onClick={() => setShowNewMatterModal(true)}><Icon name="plus" size={15} />New Matter</button>
@@ -2161,7 +2289,7 @@ useEffect(() => {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
                 <div>
                   <h1 style={{ fontFamily: "var(--font-serif)", fontSize: 22, color: "var(--navy)", marginBottom: 2 }}>Billing</h1>
-                  <p style={{ fontSize: 13.5, color: "var(--gray-500)" }}>March 2026 · Rivera & Associates</p>
+                  <p style={{ fontSize: 13.5, color: "var(--gray-500)" }}>March 2026 · {currentFirm?.name || "Your Firm"}</p>
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button className="btn btn-secondary btn-sm"><Icon name="download" size={14} />Export</button>
@@ -2203,7 +2331,7 @@ useEffect(() => {
                   </div>
 
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    {INVOICES.map(inv => {
+                    {invoices.map(inv => {
                       const matter = matters.find(m => m.id === inv.matterId);
                       return (
                         <div key={inv.id} className="card" style={{ padding: "14px 20px", display: "flex", alignItems: "center", gap: 14 }}>
@@ -2289,7 +2417,7 @@ useEffect(() => {
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button className="btn btn-secondary btn-sm"><Icon name="file" size={13} />Request Documents</button>
-                  <button className="btn btn-primary" onClick={() => document.getElementById("docs-upload-input").click()}><Icon name="upload" size={15} />Upload</button><input type="file" id="docs-upload-input" multiple style={{display:"none"}} onChange={e => { const m = matters[0]; if(m) handleFileUpload(m.id, e.target.files, "INTERNAL"); }} />
+                  <button className="btn btn-primary"><Icon name="upload" size={15} />Upload</button>
                 </div>
               </div>
 
@@ -2607,7 +2735,7 @@ useEffect(() => {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
                 <div>
                   <h1 style={{ fontFamily: "var(--font-serif)", fontSize: 22, color: "var(--navy)", marginBottom: 2 }}>Team</h1>
-                  <p style={{ fontSize: 13.5, color: "var(--gray-500)" }}>Rivera & Associates · 3 members · Pro Plan</p>
+                  <p style={{ fontSize: 13.5, color: "var(--gray-500)" }}>{currentFirm?.name || "Your Firm"} · 3 members · Pro Plan</p>
                 </div>
                 <button className="btn btn-primary"><Icon name="plus" size={15} />Invite Member</button>
               </div>
@@ -2921,9 +3049,3 @@ useEffect(() => {
     </div>
   );
 }
-
-
-
-
-
-
