@@ -839,6 +839,34 @@ export default function CounselBridge() {
   const [showAIModal, setShowAIModal] = useState(null);
   const [aiQueue, setAiQueue] = useState([]);
   const [invoices, setInvoices] = useState([]);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadMatterId, setUploadMatterId] = useState(null);
+  const [uploadingFiles, setUploadingFiles] = useState(false);
+  const fileInputRef = React.useRef(null);
+
+  const handleFileUpload = async (matterId, files, accessLevel) => {
+    if (!files || files.length === 0) return;
+    setUploadingFiles(true);
+    try {
+      const formData = new FormData();
+      Array.from(files).forEach(f => formData.append("files", f));
+      formData.append("accessLevel", accessLevel || "INTERNAL");
+      const token = localStorage.getItem("cb_token");
+      const res = await fetch("https://api.counselbridge.me/api/documents/upload/" + matterId, {
+        method: "POST",
+        headers: { Authorization: "Bearer " + token },
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Upload failed");
+      alert(data.count + " file(s) uploaded successfully!");
+      setShowUploadModal(false);
+    } catch (err) {
+      alert("Upload failed: " + err.message);
+    }
+    setUploadingFiles(false);
+  };
+
   const [messages, setMessages] = useState(MESSAGES);
   const [newMsg, setNewMsg] = useState("");
   const [showInternal, setShowInternal] = useState(false);
@@ -1138,7 +1166,7 @@ useEffect(() => {
                 ))}
               </div>
               <button className="btn btn-sm" style={{ background: "var(--amber)", color: "white" }}>
-                <Icon name="upload" size={13} />Upload Documents
+                 <Icon name="upload" size={13} />Upload Documents</button><input type="file" multiple style={{display:"none"}} id="client-upload-input" onChange={e => handleFileUpload(clientMatterId, e.target.files, "CLIENT")} /><label htmlFor="client-upload-input" className="btn btn-primary btn-sm" style={{cursor:"pointer"}}><Icon name="upload" size={13} />Upload Documents</label
               </button>
             </div>
           )}
@@ -1632,7 +1660,7 @@ useEffect(() => {
                 <h3 style={{ fontSize: 15, fontWeight: 600, color: "var(--gray-800)" }}>Matter Documents</h3>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button className="btn btn-secondary btn-sm"><Icon name="file" size={13} />Request Documents</button>
-                  <button className="btn btn-primary btn-sm"><Icon name="upload" size={13} />Upload</button>
+                  <button className="btn btn-primary btn-sm" onClick={() => { setUploadMatterId(selectedMatter?.id); document.getElementById("matter-upload-input").click(); }}><Icon name="upload" size={13} />Upload</button><input type="file" id="matter-upload-input" multiple style={{display:"none"}} onChange={e => handleFileUpload(uploadMatterId, e.target.files, "INTERNAL")} />
                 </div>
               </div>
               <div style={{ display: "grid", gap: 8 }}>
@@ -2256,7 +2284,7 @@ useEffect(() => {
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button className="btn btn-secondary btn-sm"><Icon name="file" size={13} />Request Documents</button>
-                  <button className="btn btn-primary"><Icon name="upload" size={15} />Upload</button>
+                  <button className="btn btn-primary" onClick={() => document.getElementById("docs-upload-input").click()}><Icon name="upload" size={15} />Upload</button><input type="file" id="docs-upload-input" multiple style={{display:"none"}} onChange={e => { const m = matters[0]; if(m) handleFileUpload(m.id, e.target.files, "INTERNAL"); }} />
                 </div>
               </div>
 
