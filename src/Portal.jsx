@@ -815,7 +815,8 @@ export default function CounselBridge() {
   const [selectedMatter, setSelectedMatter] = useState(null);
   const [matterTab, setMatterTab] = useState("overview");
   const [showAIModal, setShowAIModal] = useState(null);
-  const [aiQueue, setAiQueue] = useState(AI_QUEUE);
+  const [aiQueue, setAiQueue] = useState([]);
+  const [invoices, setInvoices] = useState([]);
   const [messages, setMessages] = useState(MESSAGES);
   const [newMsg, setNewMsg] = useState("");
   const [showInternal, setShowInternal] = useState(false);
@@ -2844,6 +2845,7 @@ useEffect(() => {
     </div>
   );
 }
+
 
 
 
