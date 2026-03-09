@@ -810,7 +810,7 @@ const apiFetch = async (path, options = {}) => {
   const token = localStorage.getItem("cb_token");
   const headers = { "Content-Type": "application/json", ...(token ? { Authorization: "Bearer " + token } : {}) };
   const res = await fetch(BASE + path, { ...options, headers });
-  if (res.status === 401) { localStorage.clear(); window.location.reload(); return null; }
+  if (res.status === 401) { console.warn("401 on", path); return null; }
   const data = await res.json().catch(() => null);
   if (!res.ok) throw new Error(data?.error || "Error " + res.status);
   return data;
@@ -2888,6 +2888,7 @@ useEffect(() => {
     </div>
   );
 }
+
 
 
 
