@@ -805,6 +805,28 @@ const VideoCall = ({ contact, onClose, isClient }) => {
   return null;
 };
 
+const BASE = "https://api.counselbridge.me";
+const apiFetch = async (path, options = {}) => {
+  const token = localStorage.getItem("cb_token");
+  const headers = { "Content-Type": "application/json", ...(token ? { Authorization: "Bearer " + token } : {}) };
+  const res = await fetch(BASE + path, { ...options, headers });
+  if (res.status === 401) { localStorage.clear(); window.location.reload(); return null; }
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(data?.error || "Error " + res.status);
+  return data;
+};
+const API = {
+  login: (email, password) => apiFetch("/api/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
+  matters: () => apiFetch("/api/matters"),
+  getMatter: (id) => apiFetch("/api/matters/" + id),
+  createMatter: (d) => apiFetch("/api/matters", { method: "POST", body: JSON.stringify(d) }),
+  invoices: () => apiFetch("/api/invoices"),
+  clientInvoices: () => apiFetch("/api/invoices/client"),
+  aiQueue: () => apiFetch("/api/ai/queue"),
+  threads: (matterId) => apiFetch("/api/messages/matters/" + matterId + "/threads"),
+  sendMsg: (threadId, body, isInternal) => apiFetch("/api/messages/threads/" + threadId, { method: "POST", body: JSON.stringify({ body, isInternal }) }),
+};
+
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function CounselBridge() {
   const [currentFirm, setCurrentFirm] = useState(() => { try { return JSON.parse(localStorage.getItem('cb_firm')); } catch { return null; } });
@@ -838,6 +860,27 @@ export default function CounselBridge() {
   const [videoCallContact, setVideoCallContact] = useState(null);
   const [showNewMatterModal, setShowNewMatterModal] = useState(false);
 const msgEndRef = useRef(null);
+
+  // Load real data from API
+  useEffect(() => {
+    if (view !== "attorney") return;
+    Promise.all([API.matters(), API.aiQueue(), API.invoices()]).then(([mr, qr, ir]) => {
+      if (mr?.matters) setMatters(mr.matters.map(m => {
+        const client = m.members?.find(x => x.role === "client")?.user;
+        return { id: m.id, ref: m.referenceCode, title: m.title, client: client ? client.firstName + " " + client.lastName : "�", clientEmail: client?.email || "", status: m.status?.toLowerCase() || "active", practice: m.practiceArea || "General", attorney: "", unread: 0, daysOpen: Math.floor((Date.now() - new Date(m.openedAt)) / 86400000), nextDeadline: null, urgency: "medium", retainer: 0, paid: 0, nextStep: m.nextStepClient || "", nextStepInternal: m.nextStepInternal || "", documents: m.documents || [], threads: m.threads || [], invoices: m.invoices || [], events: m.events || [], tasks: m.tasks || [] };
+      }));
+      if (qr?.queue) setAiQueue(qr.queue.map(i => ({ id: i.id, matterId: i.matterId, matterTitle: i.matter?.title || "�", agent: i.agentName, type: i.outputType?.replace(/_/g, " ") || "AI Draft", preview: i.output, generated: new Date(i.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }), aiLogId: i.id })));
+      if (ir?.invoices) setInvoices(ir.invoices.map(i => ({ id: i.id, matterId: i.matterId, number: i.number, desc: i.description, amount: i.amountCents / 100, status: i.status?.toLowerCase(), date: new Date(i.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }), due: new Date(i.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" }) })));
+    }).catch(console.error);
+  }, [view]);
+
+  useEffect(() => {
+    if (view !== "client") return;
+    API.clientInvoices().then(ir => {
+      if (ir?.invoices) setInvoices(ir.invoices.map(i => ({ id: i.id, matterId: i.matterId, number: i.number, desc: i.description, amount: i.amountCents / 100, status: i.status?.toLowerCase(), due: new Date(i.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" }) })));
+    }).catch(console.error);
+  }, [view]);
+
 // --- Load real data on login ---
 useEffect(() => {
 if (view !== "attorney") return;
