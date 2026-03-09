@@ -349,7 +349,7 @@ const StatusBadge = ({ status }) => {
 const Avatar = ({ name, size = 32, color = "blue" }) => {
   const colors = { blue: ["#EFF6FF", "#2563EB"], navy: ["#EFF6FF", "#0F2240"], purple: ["#F5F3FF", "#7C3AED"], teal: ["#F0FDFA", "#0D9488"], amber: ["#FFFBEB", "#D97706"], green: ["#ECFDF5", "#059669"] };
   const [bg, fg] = colors[color] || colors.blue;
-  const initials = name.split(" ").map(n => n[0]).slice(0, 2).join("");
+  const initials = (name || "?").split(" ").map(n => n[0]).filter(Boolean).slice(0, 2).join("");
   return (
     <div style={{ width: size, height: size, borderRadius: "50%", background: bg, color: fg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.35, fontWeight: 700, flexShrink: 0, fontFamily: "var(--font-sans)" }}>
       {initials}
@@ -2833,7 +2833,7 @@ export default function CounselBridge() {
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                               <Avatar name={item.assignee} size={20} color={item.assignee === "Alex Rivera" ? "blue" : item.assignee === "Priya Patel" ? "teal" : "purple"} />
-                              <span style={{ fontSize: 11.5, color: "var(--gray-500)" }}>{item.assignee.split(" ")[0]}</span>
+                              <span style={{ fontSize: 11.5, color: "var(--gray-500)" }}>{(item.assignee || "").split(" ")[0]}</span>
                             </div>
                             <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
                               <span className={"badge " + (item.priority === "high" ? "badge-red" : item.priority === "medium" ? "badge-amber" : "badge-gray")} style={{ fontSize: 10 }}>{item.priority}</span>
