@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Icon } from "./Icons";
+import { Icon } from "../Icons";
 
 const AIDraftModal = ({ draft, onApprove, onEdit, onReject, onClose }) => {
   const [editing, setEditing] = useState(false);
