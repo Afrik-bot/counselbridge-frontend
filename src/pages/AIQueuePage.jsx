@@ -128,6 +128,5 @@ export default function AIQueuePage({
                 </div>
               )}
             </div>
-          )}
   );
 }
