@@ -2861,49 +2861,117 @@ export default function CounselBridge() {
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 20 }}>
                 <div>
-                  {/* Overdue alert */}
-                  <div style={{ background: "var(--red-pale)", border: "1px solid #FECACA", borderRadius: "var(--radius-md)", padding: "12px 16px", marginBottom: 16, display: "flex", alignItems: "center", gap: 10 }}>
-                    <Icon name="alert-circle" size={16} color="var(--red)" />
-                    <span style={{ fontSize: 13.5, color: "#991B1B", fontWeight: 500 }}>2 invoices are overdue — send automated reminders?</span>
-                    <button className="btn btn-sm" style={{ background: "var(--red)", color: "white", marginLeft: "auto", fontSize: 12 }}>Send Reminders</button>
-                  </div>
+                  {/* Overdue alert — dynamic */}
+                  {invoices.filter(i => i.status?.toUpperCase() === "OVERDUE").length > 0 && (
+                    <div style={{ background: "var(--red-pale)", border: "1px solid #FECACA", borderRadius: "var(--radius-md)", padding: "12px 16px", marginBottom: 16, display: "flex", alignItems: "center", gap: 10 }}>
+                      <Icon name="alert-circle" size={16} color="var(--red)" />
+                      <span style={{ fontSize: 13.5, color: "#991B1B", fontWeight: 500 }}>
+                        {invoices.filter(i => i.status?.toUpperCase() === "OVERDUE").length} invoice{invoices.filter(i => i.status?.toUpperCase() === "OVERDUE").length !== 1 ? "s are" : " is"} overdue — automated reminders run daily
+                      </span>
+                      <button className="btn btn-sm" style={{ background: "var(--red)", color: "white", marginLeft: "auto", fontSize: 12 }}
+                        onClick={async () => {
+                          const token = localStorage.getItem("cb_token");
+                          const res = await fetch("https://api.counselbridge.me/api/invoices/run-reminders", {
+                            method: "POST", headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" }
+                          });
+                          const data = await res.json();
+                          alert(`Reminder pass complete: ${data.sent || 0} sent`);
+                        }}>
+                        Run Reminders Now
+                      </button>
+                    </div>
+                  )}
 
                   {/* Filter tabs */}
-                  <div className="tab-bar" style={{ marginBottom: 14 }}>
-                    {["All Invoices","Overdue","Sent","Paid","Drafts"].map(t => (
-                      <button key={t} className={"tab" + (t === "All Invoices" ? " active" : "")}>{t}</button>
-                    ))}
-                  </div>
-
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    {invoices.map(inv => {
-                      const matter = matters.find(m => m.id === inv.matterId);
-                      return (
-                        <div key={inv.id} className="card" style={{ padding: "14px 20px", display: "flex", alignItems: "center", gap: 14 }}>
-                          <div style={{ width: 42, height: 42, borderRadius: "var(--radius-md)", background: inv.status?.toUpperCase() === "PAID" ? "var(--green-pale)" : inv.status?.toUpperCase() === "OVERDUE" ? "var(--red-pale)" : "var(--blue-pale)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            <Icon name="dollar" size={18} color={inv.status?.toUpperCase() === "PAID" ? "var(--green)" : inv.status?.toUpperCase() === "OVERDUE" ? "var(--red)" : "var(--blue)"} />
-                          </div>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: 14, fontWeight: 600, color: "var(--gray-800)", marginBottom: 3 }}>{inv.desc}</div>
-                            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                              <span style={{ fontSize: 12.5, color: "var(--gray-400)" }}>{inv.number}</span>
-                              <span style={{ color: "var(--gray-300)" }}>·</span>
-                              <span style={{ fontSize: 12.5, color: "var(--gray-500)" }}>{matter?.client}</span>
-                              <span style={{ color: "var(--gray-300)" }}>·</span>
-                              <span style={{ fontSize: 12.5, color: "var(--gray-400)" }}>Due {inv.due}</span>
-                              {inv.status?.toUpperCase() === "OVERDUE" && <span style={{ fontSize: 12, color: "var(--red)", fontWeight: 600 }}>OVERDUE</span>}
-                            </div>
-                          </div>
-                          <div style={{ fontSize: 18, fontWeight: 700, color: "var(--gray-900)" }}>${(inv.amountCents ? inv.amountCents/100 : (inv.amount || 0)).toLocaleString()}</div>
-                          <StatusBadge status={inv.status} />
-                          <div style={{ display: "flex", gap: 6 }}>
-                            {inv.status?.toUpperCase() !== "PAID" && <button className="btn btn-secondary btn-sm"><Icon name="send" size={12} />Remind</button>}
-                            <button className="btn btn-ghost btn-sm"><Icon name="eye" size={13} /></button>
-                          </div>
+                  {(() => {
+                    const [billingFilter, setBillingFilter] = React.useState("All Invoices");
+                    const filtered = billingFilter === "All Invoices" ? invoices
+                      : invoices.filter(i => i.status?.toUpperCase() === billingFilter.toUpperCase());
+                    return (
+                      <>
+                        <div className="tab-bar" style={{ marginBottom: 14 }}>
+                          {["All Invoices","OVERDUE","SENT","PAID","DRAFT"].map(t => (
+                            <button key={t} className={"tab" + (billingFilter === t ? " active" : "")} onClick={() => setBillingFilter(t)}>
+                              {t === "All Invoices" ? "All" : t.charAt(0) + t.slice(1).toLowerCase()}
+                              {t !== "All Invoices" && invoices.filter(i => i.status?.toUpperCase() === t).length > 0 && (
+                                <span style={{ marginLeft: 4, fontSize: 10, background: t === "OVERDUE" ? "var(--red)" : "var(--gray-200)", color: t === "OVERDUE" ? "white" : "var(--gray-600)", borderRadius: 10, padding: "1px 5px" }}>
+                                  {invoices.filter(i => i.status?.toUpperCase() === t).length}
+                                </span>
+                              )}
+                            </button>
+                          ))}
                         </div>
-                      );
-                    })}
-                  </div>
+
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          {filtered.map(inv => {
+                            const matter = matters.find(m => m.id === inv.matterId);
+                            const statusUp = inv.status?.toUpperCase();
+                            const isOverdue = statusUp === "OVERDUE";
+                            const isPaid = statusUp === "PAID";
+                            const dueDate = inv.dueDate ? new Date(inv.dueDate) : null;
+                            const daysOverdue = dueDate && isOverdue
+                              ? Math.floor((Date.now() - dueDate.getTime()) / (1000 * 60 * 60 * 24))
+                              : 0;
+                            const clientName = matter?.members?.find(mb => mb.role === "client")?.user
+                              ? `${matter.members.find(mb => mb.role === "client").user.firstName} ${matter.members.find(mb => mb.role === "client").user.lastName}`
+                              : (matter?.client || "");
+                            const reminderLabel = inv.remindersSent > 0
+                              ? `${inv.remindersSent} reminder${inv.remindersSent !== 1 ? "s" : ""} sent${inv.lastReminderAt ? " · last " + new Date(inv.lastReminderAt).toLocaleDateString() : ""}`
+                              : null;
+
+                            return (
+                              <div key={inv.id} className="card" style={{ padding: "14px 20px", display: "flex", alignItems: "center", gap: 14, borderLeft: isOverdue ? "3px solid var(--red)" : undefined }}>
+                                <div style={{ width: 42, height: 42, borderRadius: "var(--radius-md)", background: isPaid ? "var(--green-pale)" : isOverdue ? "var(--red-pale)" : "var(--blue-pale)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                  <Icon name="dollar" size={18} color={isPaid ? "var(--green)" : isOverdue ? "var(--red)" : "var(--blue)"} />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                  <div style={{ fontSize: 14, fontWeight: 600, color: "var(--gray-800)", marginBottom: 3 }}>
+                                    {inv.description || inv.desc}
+                                  </div>
+                                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                                    <span style={{ fontSize: 12.5, color: "var(--gray-400)" }}>{inv.number}</span>
+                                    {clientName && <><span style={{ color: "var(--gray-300)" }}>·</span><span style={{ fontSize: 12.5, color: "var(--gray-500)" }}>{clientName}</span></>}
+                                    <span style={{ color: "var(--gray-300)" }}>·</span>
+                                    <span style={{ fontSize: 12.5, color: isOverdue ? "var(--red)" : "var(--gray-400)", fontWeight: isOverdue ? 600 : 400 }}>
+                                      {isOverdue ? `${daysOverdue}d overdue` : dueDate ? `Due ${dueDate.toLocaleDateString()}` : ""}
+                                    </span>
+                                    {reminderLabel && (
+                                      <span style={{ fontSize: 11.5, color: "var(--amber-600, #92400e)", background: "var(--amber-pale, #fffbeb)", padding: "1px 7px", borderRadius: 10, border: "1px solid #fde68a" }}>
+                                        <Icon name="bell" size={10} color="#92400e" /> {reminderLabel}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div style={{ fontSize: 18, fontWeight: 700, color: "var(--gray-900)" }}>
+                                  ${(inv.amountCents ? inv.amountCents / 100 : (inv.amount || 0)).toLocaleString()}
+                                </div>
+                                <StatusBadge status={inv.status} />
+                                <div style={{ display: "flex", gap: 6 }}>
+                                  {!isPaid && (
+                                    <button className="btn btn-secondary btn-sm"
+                                      onClick={async () => {
+                                        const token = localStorage.getItem("cb_token");
+                                        await fetch(`https://api.counselbridge.me/api/invoices/${inv.id}/remind`, {
+                                          method: "POST", headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" }
+                                        });
+                                        // Refresh invoices
+                                        API.invoices().then(data => { if (data) setInvoices(Array.isArray(data) ? data : (data.invoices || [])); });
+                                      }}>
+                                      <Icon name="bell" size={12} />Remind
+                                    </button>
+                                  )}
+                                  <button className="btn btn-ghost btn-sm"><Icon name="eye" size={13} /></button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                          {filtered.length === 0 && (
+                            <div style={{ textAlign: "center", padding: 32, color: "var(--gray-400)", fontSize: 13.5 }}>No invoices in this category</div>
+                          )}
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
 
                 {/* Right column */}
