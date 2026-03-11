@@ -23,7 +23,6 @@ export default function MattersListPage({
   API_BASE,
 }) {
   return (
-          {activePage === "matters" && !selectedMatter && (
             <div className="scroll-y" style={{ flex: 1, padding: 24 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
                 <h1 style={{ fontFamily: "var(--font-serif)", fontSize: 22, color: "var(--navy)" }}>Matters</h1>
