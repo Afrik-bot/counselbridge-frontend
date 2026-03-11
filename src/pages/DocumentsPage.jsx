@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { DOCUMENTS } from "../lib/mockData";
 import { Icon, StatusBadge } from "../components/Icons";
 
 export default function DocumentsPage({
@@ -25,16 +26,48 @@ export default function DocumentsPage({
   messages, setMessages,
   API_BASE,
 }) {
+  const uploadRef = useRef(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleUpload = async (files) => {
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    try {
+      const token = localStorage.getItem("cb_token");
+      const formData = new FormData();
+      Array.from(files).forEach(f => formData.append("files", f));
+      formData.append("accessLevel", "INTERNAL");
+      // Upload to first matter by default, or show matter picker
+      const matterId = matters[0]?.id;
+      if (!matterId) { alert("No matters found. Create a matter first."); setUploading(false); return; }
+      const res = await fetch(`${API_BASE}/api/documents/matters/${matterId}/upload`, {
+        method: "POST",
+        headers: { Authorization: "Bearer " + token },
+        body: formData,
+      });
+      const data = await res.json();
+      if (res.ok && data.documents) {
+        setDocuments(prev => ({ ...prev, [matterId]: [...(prev[matterId] || []), ...data.documents] }));
+      } else {
+        alert(data.error || "Upload failed");
+      }
+    } catch(e) { alert("Upload failed: " + e.message); }
+    setUploading(false);
+  };
+
   return (
             <div className="scroll-y" style={{ flex: 1, padding: 24 }}>
+              <input ref={uploadRef} type="file" multiple accept="*/*" style={{ display: "none" }} onChange={e => handleUpload(e.target.files)} />
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
                 <div>
                   <h1 style={{ fontFamily: "var(--font-serif)", fontSize: 22, color: "var(--navy)", marginBottom: 2 }}>Documents</h1>
-                  <p style={{ fontSize: 13.5, color: "var(--gray-500)" }}>All matters · 12 files · 6.4 MB used</p>
+                  <p style={{ fontSize: 13.5, color: "var(--gray-500)" }}>All matters · {Object.values(documents).flat().length + 12} files</p>
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button className="btn btn-secondary btn-sm"><Icon name="file" size={13} />Request Documents</button>
-                  <button className="btn btn-primary"><Icon name="upload" size={15} />Upload</button>
+                  <button className="btn btn-primary" onClick={() => uploadRef.current?.click()} disabled={uploading}>
+                    <Icon name="upload" size={15} />{uploading ? "Uploading…" : "Upload"}
+                  </button>
                 </div>
               </div>
 

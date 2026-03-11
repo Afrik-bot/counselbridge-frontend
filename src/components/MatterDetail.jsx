@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Icon, StatusBadge, Avatar } from "../Icons";
+import { Icon, StatusBadge, Avatar } from "./Icons";
 
 const API_BASE = "https://api.counselbridge.me";
 

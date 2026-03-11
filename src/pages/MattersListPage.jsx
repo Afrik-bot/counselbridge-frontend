@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Icon, StatusBadge } from "../components/Icons";
+import { Icon, StatusBadge, Avatar } from "../components/Icons";
 
 export default function MattersListPage({
   currentUser, currentFirm, setCurrentFirm,
@@ -7,7 +7,7 @@ export default function MattersListPage({
   documents, setDocuments, aiQueue, setAiQueue,
   setSelectedMatter, setActivePage, setShowNewMatterModal,
   setShowInvoiceModal, setShowVideoCall, setVideoCallContact,
-  searchQ, billingFilter, setBillingFilter,
+  searchQ, setSearchQ, billingFilter, setBillingFilter,
   aiActionLoading, approveAI, rejectAI, showAIModal, setShowAIModal,
   activeSettingsTab, setActiveSettingsTab,
   settingsSaving, setSettingsSaving, settingsSaved, setSettingsSaved,

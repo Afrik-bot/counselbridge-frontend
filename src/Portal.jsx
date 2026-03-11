@@ -490,18 +490,21 @@ export default function CounselBridge() {
     setChatHistory(h => [...h, { role: "user", text: userMsg }]);
     setAiChatLoading(true);
     try {
-      const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      const token = localStorage.getItem("cb_token");
+      const matter = matters.find(m => m.id === clientMatterId);
+      const resp = await fetch(API_BASE + "/api/ai/client-chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1000,
-          system: `You are the AI assistant for CounselBridge, a legal client portal. The client is Sarah Johnson, who has an active divorce proceeding (Family Law). You can help with general process questions and case status. You MUST NOT provide legal advice, predict outcomes, or advise on legal strategy. If asked for legal advice, say: "That's a great question for your attorney. I can help with general process questions — for specific legal guidance, please message Alex Rivera directly." Keep responses concise, warm, and in plain English. Current case status: Active. Next step: Upload mortgage statement, retirement account statements, and business documents.`,
-          messages: [{ role: "user", content: userMsg }]
+          message: userMsg,
+          matterId: clientMatterId,
+          matterTitle: matter?.title || "your case",
+          matterStatus: matter?.status || "Active",
+          nextStep: matter?.nextStep || "Your attorney will be in touch.",
         })
       });
       const data = await resp.json();
-      const text = data.content?.map(c => c.text || "").join("") || "I'm sorry, I couldn't process that. Please message your attorney directly.";
+      const text = data.reply || data.text || "I'm sorry, I couldn't process that. Please message your attorney directly.";
       setChatHistory(h => [...h, { role: "ai", text }]);
     } catch {
       setChatHistory(h => [...h, { role: "ai", text: "I'm having trouble connecting right now. Please message your attorney directly for assistance." }]);
@@ -556,7 +559,7 @@ export default function CounselBridge() {
     documents, setDocuments, aiQueue, setAiQueue,
     setSelectedMatter, setActivePage, setShowNewMatterModal,
     setShowInvoiceModal, setShowVideoCall, setVideoCallContact,
-    searchQ, billingFilter, setBillingFilter,
+    searchQ, setSearchQ, billingFilter, setBillingFilter,
     aiActionLoading, approveAI, rejectAI, showAIModal, setShowAIModal,
     activeSettingsTab, setActiveSettingsTab,
     settingsSaving, setSettingsSaving, settingsSaved, setSettingsSaved,

@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Icon } from "../components/Icons";
 
-const API_BASE = "https://api.counselbridge.me";
 
 export default function SettingsPage({
   currentUser, currentFirm, setCurrentFirm,
@@ -193,7 +192,7 @@ export default function SettingsPage({
                               {member.mfaEnabled && <Icon name="shield" size={12} color="var(--green)" title="MFA enabled" />}
                               {member.id !== currentUser?.id && member.role !== "OWNER" && (
                                 <button className="btn btn-ghost btn-sm" style={{ fontSize: 11, color: "var(--red, #dc2626)" }}
-                                  onClick={async () => { if (confirm(`Remove ${member.firstName} ${member.lastName}?`)) { await API.removeMember(member.id); loadTeam(); } }}>
+                                  onClick={async () => { if (window.confirm(`Remove ${member.firstName} ${member.lastName}?`)) { try { const token = localStorage.getItem('cb_token'); await fetch(`${API_BASE}/api/firms/me/team/${member.id}`, { method: 'DELETE', headers: { Authorization: 'Bearer ' + token } }); loadTeam(); } catch(e) { console.error('Remove failed', e); } } }}>
                                   Remove
                                 </button>
                               )}

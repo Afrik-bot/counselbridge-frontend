@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Icon } from "../components/Icons";
 
-const API_BASE = "https://api.counselbridge.me";
 
 export default function AIQueuePage({
   currentUser, currentFirm, setCurrentFirm,
