@@ -1744,15 +1744,17 @@ export default function CounselBridge() {
 
   // Load settings data when settings page opens
   useEffect(() => {
-    if (activePage === "settings" && view === "attorney") {
+    const token = localStorage.getItem("cb_token");
+    if (activePage === "settings" && view === "attorney" && token) {
       loadFirmSettings();
       loadTeam();
     }
-  }, [activePage]);
+  }, [activePage, view]);
 
   // Load audit log when audit tab opens
   useEffect(() => {
-    if (activePage === "settings" && activeSettingsTab === "audit" && view === "attorney") {
+    const token = localStorage.getItem("cb_token");
+    if (activePage === "settings" && activeSettingsTab === "audit" && view === "attorney" && token) {
       loadAuditLog();
     }
   }, [activeSettingsTab]);
@@ -1824,15 +1826,39 @@ export default function CounselBridge() {
     setAiChatLoading(false);
   };
 
-  const approveAI = (id, text) => {
-    setAiQueue(q => q.filter(i => i.id !== id));
-    setShowAIModal(null);
-    setNotifications(n => Math.max(0, n - 1));
+  const [aiActionLoading, setAiActionLoading] = useState(null);
+
+  const approveAI = async (id, editedText) => {
+    setAiActionLoading(id);
+    try {
+      const token = localStorage.getItem("cb_token");
+      const res = await fetch(`${API_BASE}/api/ai/approve/${id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+        body: JSON.stringify({ editedOutput: editedText }),
+      });
+      if (res.ok) {
+        setAiQueue(q => q.filter(i => i.id !== id));
+        setShowAIModal(null);
+      }
+    } catch(e) { console.error("approveAI failed", e); }
+    setAiActionLoading(null);
   };
 
-  const rejectAI = (id) => {
-    setAiQueue(q => q.filter(i => i.id !== id));
-    setShowAIModal(null);
+  const rejectAI = async (id) => {
+    setAiActionLoading(id);
+    try {
+      const token = localStorage.getItem("cb_token");
+      const res = await fetch(`${API_BASE}/api/ai/reject/${id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+      });
+      if (res.ok) {
+        setAiQueue(q => q.filter(i => i.id !== id));
+        setShowAIModal(null);
+      }
+    } catch(e) { console.error("rejectAI failed", e); }
+    setAiActionLoading(null);
   };
 
   const filteredMatters = matters.filter(m =>
@@ -2593,13 +2619,17 @@ export default function CounselBridge() {
                           <span className="badge badge-purple">{aiQueue.length}</span>
                         </div>
                       </div>
-                      {aiQueue.map(item => (
+                      {aiQueue.slice(0, 3).map(item => (
                         <div key={item.id} style={{ padding: "10px 12px", background: "var(--purple-pale)", borderRadius: "var(--radius-sm)", marginBottom: 8, border: "1px solid #DDD6FE" }}>
-                          <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--purple)", marginBottom: 4 }}>{item.type} · {item.matterTitle}</div>
-                          <div style={{ fontSize: 12.5, color: "var(--gray-600)", lineHeight: 1.5, marginBottom: 8, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{item.preview}</div>
+                          <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--purple)", marginBottom: 4 }}>
+                            {item.agentName || item.type} · {item.matter?.title || item.matterTitle || "—"}
+                          </div>
+                          <div style={{ fontSize: 12.5, color: "var(--gray-600)", lineHeight: 1.5, marginBottom: 8, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                            {item.output || item.preview}
+                          </div>
                           <div style={{ display: "flex", gap: 6 }}>
-                            <button className="btn btn-sm btn-danger" style={{ flex: 1, justifyContent: "center", fontSize: 11 }} onClick={() => rejectAI(item.id)}>Reject</button>
-                            <button className="btn btn-sm btn-primary" style={{ flex: 1, justifyContent: "center", fontSize: 11 }} onClick={() => setShowAIModal(item)}><Icon name="eye" size={11} />Review</button>
+                            <button className="btn btn-sm btn-danger" style={{ flex: 1, justifyContent: "center", fontSize: 11 }} disabled={aiActionLoading === item.id} onClick={() => rejectAI(item.id)}>Reject</button>
+                            <button className="btn btn-sm btn-primary" style={{ flex: 1, justifyContent: "center", fontSize: 11 }} onClick={() => setActivePage("ai-queue")}><Icon name="eye" size={11} />Review</button>
                           </div>
                         </div>
                       ))}
@@ -2694,46 +2724,105 @@ export default function CounselBridge() {
           {/* AI QUEUE PAGE */}
           {activePage === "ai-queue" && (
             <div className="scroll-y" style={{ flex: 1, padding: 24 }}>
-              <div style={{ marginBottom: 20 }}>
-                <h1 style={{ fontFamily: "var(--font-serif)", fontSize: 22, color: "var(--navy)", marginBottom: 4 }}>AI Approval Queue</h1>
-                <p style={{ fontSize: 13.5, color: "var(--gray-500)" }}>Review and approve AI-generated content before it reaches clients. Nothing sends without your approval.</p>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
+                <div>
+                  <h1 style={{ fontFamily: "var(--font-serif)", fontSize: 22, color: "var(--navy)", marginBottom: 4 }}>AI Approval Queue</h1>
+                  <p style={{ fontSize: 13.5, color: "var(--gray-500)" }}>Review and approve AI-generated content before it reaches clients. Nothing sends without your approval.</p>
+                </div>
+                {aiQueue.length > 0 && (
+                  <span style={{ background: "var(--purple-pale)", color: "var(--purple)", fontWeight: 700, fontSize: 13, padding: "4px 12px", borderRadius: 20 }}>
+                    {aiQueue.length} pending
+                  </span>
+                )}
               </div>
+
+              {/* Legal disclaimer banner */}
+              <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: "var(--radius-md)", padding: "10px 14px", marginBottom: 20, fontSize: 13, color: "#92400e", display: "flex", gap: 8, alignItems: "flex-start" }}>
+                <Icon name="shield" size={14} color="#d97706" />
+                <span><strong>Attorney Responsibility:</strong> All AI-generated content requires your explicit review before delivery. You are responsible for all communications sent from this platform. Edit freely — the AI draft is a starting point only.</span>
+              </div>
+
               {aiQueue.length === 0 ? (
                 <div className="empty-state">
                   <Icon name="check-circle" size={48} color="var(--green)" />
-                  <div style={{ fontSize: 16, fontWeight: 600, color: "var(--gray-600)", marginTop: 12 }}>All clear</div>
+                  <div style={{ fontSize: 16, fontWeight: 600, color: "var(--gray-600)", marginTop: 12 }}>Queue is clear</div>
                   <div style={{ fontSize: 14, color: "var(--gray-400)", marginTop: 4 }}>No AI-generated content awaiting approval</div>
                 </div>
               ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 14, maxWidth: 720 }}>
-                  {aiQueue.map(item => (
-                    <div key={item.id} className="card" style={{ padding: "20px 22px" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-                        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                          <div style={{ width: 36, height: 36, background: "var(--purple-pale)", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            <Icon name="cpu" size={17} color="var(--purple)" />
+                <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 760 }}>
+                  {aiQueue.map(item => {
+                    const isEditing = showAIModal?.id === item.id;
+                    const agentLabel = { MessageDraftAgent: "Message Draft", PlainLanguageAgent: "Case Update (Plain English)", MeetingSummaryAgent: "Meeting Summary" }[item.agentName] || item.agentName;
+                    const matterTitle = item.matter?.title || item.matterTitle || "—";
+                    const matterRef = item.matter?.referenceCode || "";
+                    const generatedAt = item.createdAt ? new Date(item.createdAt).toLocaleString() : "";
+                    return (
+                      <div key={item.id} className="card" style={{ padding: "20px 22px", border: isEditing ? "2px solid var(--blue)" : undefined }}>
+                        {/* Header */}
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
+                          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                            <div style={{ width: 36, height: 36, background: "var(--purple-pale)", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                              <Icon name="cpu" size={17} color="var(--purple)" />
+                            </div>
+                            <div>
+                              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--gray-800)" }}>{agentLabel}</div>
+                              <div style={{ fontSize: 12.5, color: "var(--gray-400)" }}>
+                                {matterTitle}{matterRef ? ` · ${matterRef}` : ""} · {generatedAt}
+                              </div>
+                            </div>
                           </div>
-                          <div>
-                            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--gray-800)" }}>{item.type}</div>
-                            <div style={{ fontSize: 12.5, color: "var(--gray-400)" }}>{item.agent} · {item.matterTitle} · {item.generated}</div>
-                          </div>
+                          <span className="ai-badge" style={{ background: "var(--amber-pale)", color: "#92400e", border: "1px solid #fde68a" }}>Pending Review</span>
                         </div>
-                        <span className="ai-badge">Pending Review</span>
+
+                        {/* Draft content — editable when in edit mode */}
+                        {isEditing ? (
+                          <div style={{ marginBottom: 14 }}>
+                            <div style={{ fontSize: 12, color: "var(--blue)", fontWeight: 600, marginBottom: 6 }}>✏️ Editing draft — make any changes before approving</div>
+                            <textarea
+                              value={showAIModal.editedOutput ?? showAIModal.output}
+                              onChange={e => setShowAIModal(prev => ({ ...prev, editedOutput: e.target.value }))}
+                              style={{ width: "100%", minHeight: 140, padding: "10px 12px", fontSize: 14, lineHeight: 1.65, border: "1.5px solid var(--blue)", borderRadius: "var(--radius-sm)", resize: "vertical", fontFamily: "inherit", color: "var(--gray-800)", outline: "none", boxSizing: "border-box" }}
+                            />
+                          </div>
+                        ) : (
+                          <div className="ai-card" style={{ marginBottom: 14 }}>
+                            <p style={{ fontSize: 14, color: "var(--gray-700)", lineHeight: 1.65, whiteSpace: "pre-wrap" }}>{item.output}</p>
+                          </div>
+                        )}
+
+                        {/* Actions */}
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                          <button
+                            className="btn btn-sm"
+                            style={{ background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" }}
+                            disabled={aiActionLoading === item.id}
+                            onClick={() => rejectAI(item.id)}>
+                            <Icon name="x" size={13} color="#dc2626" />
+                            {aiActionLoading === item.id ? "Rejecting…" : "Reject"}
+                          </button>
+
+                          {!isEditing ? (
+                            <button className="btn btn-secondary btn-sm" onClick={() => setShowAIModal({ ...item, editedOutput: item.output })}>
+                              <Icon name="edit" size={13} />Edit Draft
+                            </button>
+                          ) : (
+                            <button className="btn btn-secondary btn-sm" onClick={() => setShowAIModal(null)}>
+                              Cancel Edit
+                            </button>
+                          )}
+
+                          <button
+                            className="btn btn-primary btn-sm"
+                            disabled={aiActionLoading === item.id}
+                            onClick={() => approveAI(item.id, isEditing ? (showAIModal.editedOutput ?? item.output) : item.output)}
+                            style={{ marginLeft: "auto" }}>
+                            <Icon name="check" size={13} />
+                            {aiActionLoading === item.id ? "Approving…" : isEditing ? "Approve Edited Draft" : "Approve & Send"}
+                          </button>
+                        </div>
                       </div>
-                      <div className="ai-card" style={{ marginBottom: 14 }}>
-                        <p style={{ fontSize: 14, color: "var(--gray-700)", lineHeight: 1.65 }}>{item.preview}</p>
-                      </div>
-                      <div style={{ background: "var(--amber-pale)", border: "1px solid #FDE68A", borderRadius: "var(--radius-sm)", padding: "8px 12px", fontSize: 12.5, color: "#92400E", marginBottom: 14, display: "flex", gap: 6, alignItems: "flex-start" }}>
-                        <Icon name="shield" size={13} color="#D97706" />
-                        This content will only be delivered after your explicit approval. As the attorney of record, you are responsible for all client communications.
-                      </div>
-                      <div style={{ display: "flex", gap: 8 }}>
-                        <button className="btn btn-danger btn-sm" onClick={() => rejectAI(item.id)}><Icon name="x" size={13} />Reject</button>
-                        <button className="btn btn-secondary btn-sm"><Icon name="edit" size={13} />Edit before approving</button>
-                        <button className="btn btn-primary btn-sm" onClick={() => setShowAIModal(item)}><Icon name="eye" size={13} />Review & Approve</button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
