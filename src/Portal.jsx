@@ -2349,54 +2349,94 @@ export default function CounselBridge() {
       )}
 
       {/* New Matter Modal */}
-      {showNewMatterModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(15,34,64,0.6)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }} onClick={() => setShowNewMatterModal(false)}>
-          <div className="card fade-in" style={{ width: 560, maxHeight: "85vh", overflow: "auto", padding: 32 }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-              <h3 style={{ fontSize: 19, fontWeight: 700, color: "var(--navy)", fontFamily: "var(--font-serif)" }}>Open New Matter</h3>
-              <button className="btn btn-ghost btn-sm" onClick={() => setShowNewMatterModal(false)}><Icon name="x" size={16} /></button>
-            </div>
-            <p style={{ fontSize: 13.5, color: "var(--gray-500)", marginBottom: 24 }}>Fill in the details below. A client portal invitation will be sent automatically.</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div><label>Client First Name</label><input className="input" placeholder="Sarah" /></div>
-                <div><label>Client Last Name</label><input className="input" placeholder="Johnson" /></div>
+      {showNewMatterModal && (() => {
+        const [nmForm, setNmForm] = React.useState({ clientFirstName: "", clientLastName: "", clientEmail: "", clientPhone: "", title: "", practiceArea: "Family Law", notes: "", retainerCents: 0, billingType: "Hourly" });
+        const [nmLoading, setNmLoading] = React.useState(false);
+        const [nmError, setNmError] = React.useState("");
+
+        const handleCreate = async () => {
+          if (!nmForm.clientEmail || !nmForm.title || !nmForm.clientFirstName || !nmForm.clientLastName) {
+            setNmError("Client name, email, and matter title are required."); return;
+          }
+          setNmLoading(true); setNmError("");
+          try {
+            const token = localStorage.getItem("cb_token");
+            const res = await fetch("https://api.counselbridge.me/api/matters", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+              body: JSON.stringify({
+                title: nmForm.title,
+                practiceArea: nmForm.practiceArea,
+                notes: nmForm.notes,
+                clientFirstName: nmForm.clientFirstName,
+                clientLastName: nmForm.clientLastName,
+                clientEmail: nmForm.clientEmail,
+                clientPhone: nmForm.clientPhone,
+              }),
+            });
+            const data = await res.json();
+            if (!res.ok) { setNmError(data.error || "Failed to create matter"); setNmLoading(false); return; }
+            // Refresh matters list
+            API.matters().then(d => { if (d) setMatters(Array.isArray(d) ? d : (d.matters || [])); });
+            setShowNewMatterModal(false);
+            if (data.matter) { setSelectedMatter(data.matter); setActivePage("matter"); }
+          } catch(e) { setNmError(e.message || "Network error"); }
+          setNmLoading(false);
+        };
+
+        return (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(15,34,64,0.6)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }} onClick={() => setShowNewMatterModal(false)}>
+            <div className="card fade-in" style={{ width: 560, maxHeight: "85vh", overflow: "auto", padding: 32 }} onClick={e => e.stopPropagation()}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                <h3 style={{ fontSize: 19, fontWeight: 700, color: "var(--navy)", fontFamily: "var(--font-serif)" }}>Open New Matter</h3>
+                <button className="btn btn-ghost btn-sm" onClick={() => setShowNewMatterModal(false)}><Icon name="x" size={16} /></button>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div><label>Client Email</label><input className="input" type="email" placeholder="client@email.com" /></div>
-                <div><label>Client Phone</label><input className="input" placeholder="(415) 555-0100" /></div>
-              </div>
-              <div><label>Matter Title</label><input className="input" placeholder="e.g. Johnson Divorce Proceeding" /></div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div><label>Practice Area</label>
-                  <select className="input select">
-                    <option>Family Law</option><option>Estate Planning</option><option>Litigation</option>
-                    <option>Corporate</option><option>Personal Injury</option><option>Real Estate</option><option>Criminal Defense</option>
-                  </select>
+              <p style={{ fontSize: 13.5, color: "var(--gray-500)", marginBottom: 24 }}>Fill in the details below. A client portal invitation will be sent automatically.</p>
+
+              {nmError && (
+                <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: "var(--radius-sm)", padding: "10px 14px", marginBottom: 14, fontSize: 13, color: "#dc2626" }}>
+                  {nmError}
                 </div>
-                <div><label>Lead Attorney</label>
-                  <select className="input select"><option>Alex Rivera</option><option>Priya Patel (Paralegal)</option></select>
+              )}
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  <div><label>Client First Name *</label><input className="input" value={nmForm.clientFirstName} onChange={e => setNmForm(p => ({...p, clientFirstName: e.target.value}))} placeholder="Sarah" /></div>
+                  <div><label>Client Last Name *</label><input className="input" value={nmForm.clientLastName} onChange={e => setNmForm(p => ({...p, clientLastName: e.target.value}))} placeholder="Johnson" /></div>
                 </div>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div><label>Retainer Amount</label><input className="input" placeholder="$0.00" /></div>
-                <div><label>Billing Type</label>
-                  <select className="input select"><option>Hourly</option><option>Flat fee</option><option>Contingency</option></select>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  <div><label>Client Email *</label><input className="input" type="email" value={nmForm.clientEmail} onChange={e => setNmForm(p => ({...p, clientEmail: e.target.value}))} placeholder="client@email.com" /></div>
+                  <div><label>Client Phone</label><input className="input" value={nmForm.clientPhone} onChange={e => setNmForm(p => ({...p, clientPhone: e.target.value}))} placeholder="(415) 555-0100" /></div>
                 </div>
-              </div>
-              <div><label>Initial Notes (internal)</label><textarea className="input textarea" placeholder="Brief description of the matter and client situation..." /></div>
-              <div style={{ background: "var(--blue-pale)", border: "1px solid var(--blue-pale2)", borderRadius: "var(--radius-sm)", padding: "10px 14px", fontSize: 13, color: "var(--blue)" }}>
-                <Icon name="mail" size={13} color="var(--blue)" style={{ display: "inline", marginRight: 6 }} />
-                A portal invitation email will be sent to the client automatically upon saving.
-              </div>
-              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", paddingTop: 4 }}>
-                <button className="btn btn-secondary" onClick={() => setShowNewMatterModal(false)}>Cancel</button>
-                <button className="btn btn-primary" onClick={() => { setShowNewMatterModal(false); setActivePage("matters"); }}><Icon name="briefcase" size={14} />Open Matter & Invite Client</button>
+                <div><label>Matter Title *</label><input className="input" value={nmForm.title} onChange={e => setNmForm(p => ({...p, title: e.target.value}))} placeholder="e.g. Johnson Divorce Proceeding" /></div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  <div><label>Practice Area</label>
+                    <select className="input select" value={nmForm.practiceArea} onChange={e => setNmForm(p => ({...p, practiceArea: e.target.value}))}>
+                      <option>Family Law</option><option>Estate Planning</option><option>Litigation</option>
+                      <option>Corporate</option><option>Personal Injury</option><option>Real Estate</option><option>Criminal Defense</option>
+                    </select>
+                  </div>
+                  <div><label>Billing Type</label>
+                    <select className="input select" value={nmForm.billingType} onChange={e => setNmForm(p => ({...p, billingType: e.target.value}))}>
+                      <option>Hourly</option><option>Flat fee</option><option>Contingency</option>
+                    </select>
+                  </div>
+                </div>
+                <div><label>Initial Notes (internal)</label><textarea className="input textarea" value={nmForm.notes} onChange={e => setNmForm(p => ({...p, notes: e.target.value}))} placeholder="Brief description of the matter and client situation..." /></div>
+                <div style={{ background: "var(--blue-pale)", border: "1px solid var(--blue-pale2)", borderRadius: "var(--radius-sm)", padding: "10px 14px", fontSize: 13, color: "var(--blue)" }}>
+                  <Icon name="mail" size={13} color="var(--blue)" /> A portal invitation email will be sent to the client automatically.
+                </div>
+                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", paddingTop: 4 }}>
+                  <button className="btn btn-secondary" onClick={() => setShowNewMatterModal(false)}>Cancel</button>
+                  <button className="btn btn-primary" onClick={handleCreate} disabled={nmLoading}>
+                    <Icon name="briefcase" size={14} />{nmLoading ? "Creating…" : "Open Matter & Invite Client"}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Invoice Modal */}
       {showInvoiceModal && (
