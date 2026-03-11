@@ -20,6 +20,9 @@ export default function InboxPage({
   loadFirmSettings, saveFirmProfile, uploadLogo,
   loadTeam, inviteMember, loadAuditLog, saveAgentSettings,
   nmForm, setNmForm, nmLoading, setNmLoading, nmError, setNmError,
+  digestExpanded, setDigestExpanded,
+  filteredMatters, matterTab, setMatterTab,
+  messages, setMessages,
   API_BASE,
 }) {
   return (

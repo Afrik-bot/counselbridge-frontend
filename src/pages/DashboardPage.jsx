@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Icon, StatusBadge, Avatar } from "../components/Icons";
+import { DIGEST_TEXT } from "../lib/mockData";
 
 export default function DashboardPage({
   currentUser, currentFirm, setCurrentFirm,
@@ -20,6 +21,9 @@ export default function DashboardPage({
   loadFirmSettings, saveFirmProfile, uploadLogo,
   loadTeam, inviteMember, loadAuditLog, saveAgentSettings,
   nmForm, setNmForm, nmLoading, setNmLoading, nmError, setNmError,
+  digestExpanded, setDigestExpanded,
+  filteredMatters, matterTab, setMatterTab,
+  messages, setMessages,
   API_BASE,
 }) {
   return (
