@@ -990,14 +990,14 @@ const MatterDetail = ({ matter, messages, documents, invoices, showInternal, set
   // Upload ref for this matter (stable - defined outside)
   // uploadInputRef and uploading come from parent scope
 
-  const handleUpload = async (files) => {
+  const handleUpload = async (files, accessLevel = "INTERNAL") => {
     if (!files || files.length === 0) return;
     setUploading(true);
     try {
       const token = localStorage.getItem("cb_token");
       const formData = new FormData();
       Array.from(files).forEach(f => formData.append("files", f));
-      formData.append("accessLevel", "INTERNAL");
+      formData.append("accessLevel", accessLevel);
       const res = await fetch(`https://api.counselbridge.me/api/documents/matters/${matter.id}/upload`, {
         method: "POST",
         headers: { Authorization: "Bearer " + token },
@@ -1006,9 +1006,57 @@ const MatterDetail = ({ matter, messages, documents, invoices, showInternal, set
       const data = await res.json();
       if (res.ok && data.documents) {
         setDocuments(prev => ({ ...prev, [matter.id]: [...(prev[matter.id] || []), ...data.documents] }));
+      } else {
+        console.error("Upload error:", data?.error);
       }
     } catch(e) { console.error("Upload failed", e); }
     setUploading(false);
+  };
+
+  const handleDownload = async (doc) => {
+    try {
+      const token = localStorage.getItem("cb_token");
+      const res = await fetch(`https://api.counselbridge.me/api/documents/${doc.id}/download`, {
+        headers: { Authorization: "Bearer " + token }
+      });
+      const data = await res.json();
+      if (data.url) {
+        const a = document.createElement("a");
+        a.href = data.url;
+        a.download = data.filename;
+        a.target = "_blank";
+        a.click();
+      }
+    } catch(e) { console.error("Download failed", e); }
+  };
+
+  const handleView = async (doc) => {
+    try {
+      const token = localStorage.getItem("cb_token");
+      const res = await fetch(`https://api.counselbridge.me/api/documents/${doc.id}/view`, {
+        headers: { Authorization: "Bearer " + token }
+      });
+      const data = await res.json();
+      if (data.url) window.open(data.url, "_blank");
+    } catch(e) { console.error("View failed", e); }
+  };
+
+  const toggleDocAccess = async (doc) => {
+    const newLevel = doc.accessLevel === "INTERNAL" ? "CLIENT_VISIBLE" : "INTERNAL";
+    try {
+      const token = localStorage.getItem("cb_token");
+      const res = await fetch(`https://api.counselbridge.me/api/documents/${doc.id}`, {
+        method: "PATCH",
+        headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
+        body: JSON.stringify({ accessLevel: newLevel })
+      });
+      if (res.ok) {
+        setDocuments(prev => ({
+          ...prev,
+          [matter.id]: (prev[matter.id] || []).map(d => d.id === doc.id ? { ...d, accessLevel: newLevel } : d)
+        }));
+      }
+    } catch(e) { console.error("Access update failed", e); }
   };
 
   return (
@@ -1223,42 +1271,118 @@ const MatterDetail = ({ matter, messages, documents, invoices, showInternal, set
         )}
 
         {/* DOCUMENTS */}
-        {matterTab === "documents" && (
+        {matterTab === "documents" && (() => {
+          const [dragOver, setDragOver] = useState(false);
+          const [uploadAccess, setUploadAccess] = useState("INTERNAL");
+          return (
           <div className="fade-in">
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <h3 style={{ fontSize: 15, fontWeight: 600, color: "var(--gray-800)" }}>Matter Documents</h3>
-              <div style={{ display: "flex", gap: 8 }}>
-                <input ref={uploadInputRef} type="file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.txt" style={{ display: "none" }} onChange={e => handleUpload(e.target.files)} />
-                <button className="btn btn-secondary btn-sm"><Icon name="file" size={13} />Request Documents</button>
-                <button className="btn btn-primary btn-sm" onClick={() => uploadInputRef.current?.click()} disabled={uploading}><Icon name="upload" size={13} />{uploading ? "Uploading…" : "Upload"}</button>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <select value={uploadAccess} onChange={e => setUploadAccess(e.target.value)}
+                  style={{ fontSize: 12, padding: "4px 8px", border: "1.5px solid var(--gray-200)", borderRadius: "var(--radius-sm)", color: "var(--gray-700)", background: "white", cursor: "pointer" }}>
+                  <option value="INTERNAL">Internal only</option>
+                  <option value="CLIENT_VISIBLE">Share with client</option>
+                </select>
+                <input ref={uploadInputRef} type="file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.txt" style={{ display: "none" }} onChange={e => handleUpload(e.target.files, uploadAccess)} />
+                <button className="btn btn-primary btn-sm" onClick={() => uploadInputRef.current?.click()} disabled={uploading}>
+                  <Icon name="upload" size={13} />{uploading ? "Uploading…" : "Upload Files"}
+                </button>
               </div>
             </div>
+
+            {/* Drag & drop zone */}
+            <div
+              onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={e => { e.preventDefault(); setDragOver(false); handleUpload(e.dataTransfer.files, uploadAccess); }}
+              style={{
+                border: `2px dashed ${dragOver ? "var(--blue)" : "var(--gray-200)"}`,
+                borderRadius: "var(--radius-md)",
+                padding: "20px",
+                textAlign: "center",
+                background: dragOver ? "var(--blue-pale)" : "var(--gray-50)",
+                marginBottom: 16,
+                transition: "all 150ms ease",
+                cursor: "pointer",
+              }}
+              onClick={() => uploadInputRef.current?.click()}
+            >
+              <Icon name="upload" size={22} color={dragOver ? "var(--blue)" : "var(--gray-300)"} />
+              <p style={{ marginTop: 8, fontSize: 13, color: dragOver ? "var(--blue)" : "var(--gray-400)" }}>
+                {dragOver ? "Drop files to upload" : "Drag & drop files here, or click to browse"}
+              </p>
+              <p style={{ fontSize: 11.5, color: "var(--gray-300)", marginTop: 4 }}>PDF, Word, Excel, images — up to 25 MB each</p>
+            </div>
+
+            {/* Document list */}
             <div style={{ display: "grid", gap: 8 }}>
-              {docs.length === 0 && <div style={{ textAlign: "center", padding: "40px 0", color: "var(--gray-400)", fontSize: 14 }}><Icon name="file" size={32} color="var(--gray-300)" /><p style={{ marginTop: 10 }}>No documents yet. Upload the first one.</p></div>}
-              {docs.map(doc => (
-                <div key={doc.id} className="card card-hover" style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-                  <div style={{ width: 38, height: 38, background: "var(--blue-pale)", borderRadius: "var(--radius-sm)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <Icon name="file" size={18} color="var(--blue)" />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13.5, fontWeight: 500, color: "var(--gray-800)", marginBottom: 3 }}>{doc.filename || doc.name || "Document"}</div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      {doc.aiLabel && <span className="ai-badge"><Icon name="tag" size={10} color="var(--purple)" />{doc.aiLabel}</span>}
-                      {doc.aiLabel && doc.aiConfidence && <span style={{ fontSize: 11.5, color: "var(--gray-400)" }}>{Math.round((doc.aiConfidence || doc.confidence || 0) * 100)}% confident</span>}
-                      {(doc.uploadedBy || doc.by) && <><span style={{ fontSize: 11.5, color: "var(--gray-300)" }}>·</span><span style={{ fontSize: 11.5, color: "var(--gray-400)" }}>by {doc.uploadedBy ? `${doc.uploadedBy.firstName || ""} ${doc.uploadedBy.lastName || ""}`.trim() : doc.by}</span></>}
-                      {doc.sizeBytes && <><span style={{ fontSize: 11.5, color: "var(--gray-300)" }}>·</span><span style={{ fontSize: 11.5, color: "var(--gray-400)" }}>{(doc.sizeBytes / 1024).toFixed(0)} KB</span></>}
-                      <span className={`badge ${(doc.accessLevel === "CLIENT_VISIBLE" || doc.shared) ? "badge-blue" : "badge-gray"}`} style={{ fontSize: 10 }}>{(doc.accessLevel === "CLIENT_VISIBLE" || doc.shared) ? "Client visible" : "Internal"}</span>
+              {docs.length === 0 && (
+                <div style={{ textAlign: "center", padding: "30px 0", color: "var(--gray-400)", fontSize: 14 }}>
+                  <Icon name="file" size={32} color="var(--gray-300)" />
+                  <p style={{ marginTop: 10 }}>No documents yet. Upload the first one above.</p>
+                </div>
+              )}
+              {docs.map(doc => {
+                const isClientVisible = doc.accessLevel === "CLIENT_VISIBLE" || doc.shared;
+                const isViewable = ["application/pdf","image/jpeg","image/png","image/webp"].includes(doc.mimeType);
+                const uploaderName = doc.uploadedBy
+                  ? `${doc.uploadedBy.firstName || ""} ${doc.uploadedBy.lastName || ""}`.trim()
+                  : (doc.by || "");
+                const fileSizeLabel = doc.sizeBytes
+                  ? doc.sizeBytes > 1024 * 1024
+                    ? `${(doc.sizeBytes / (1024 * 1024)).toFixed(1)} MB`
+                    : `${(doc.sizeBytes / 1024).toFixed(0)} KB`
+                  : doc.size || "";
+                return (
+                  <div key={doc.id} className="card" style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+                    <div style={{ width: 38, height: 38, background: "var(--blue-pale)", borderRadius: "var(--radius-sm)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <Icon name="file" size={18} color="var(--blue)" />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13.5, fontWeight: 500, color: "var(--gray-800)", marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {doc.filename || doc.name || "Document"}
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                        {doc.aiLabel && (
+                          <span className="badge badge-purple" style={{ fontSize: 10 }}>
+                            <Icon name="tag" size={9} color="var(--purple)" /> {doc.aiLabel}
+                            {doc.aiConfidence && <span style={{ opacity: 0.7 }}> · {Math.round(doc.aiConfidence * 100)}%</span>}
+                          </span>
+                        )}
+                        {uploaderName && <span style={{ fontSize: 11.5, color: "var(--gray-400)" }}>by {uploaderName}</span>}
+                        {fileSizeLabel && <><span style={{ fontSize: 11, color: "var(--gray-300)" }}>·</span><span style={{ fontSize: 11.5, color: "var(--gray-400)" }}>{fileSizeLabel}</span></>}
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
+                      {/* Share toggle — attorneys only */}
+                      {currentUser?.role !== "CLIENT" && (
+                        <button
+                          className={`btn btn-sm ${isClientVisible ? "btn-secondary" : "btn-ghost"}`}
+                          style={{ fontSize: 11.5 }}
+                          title={isClientVisible ? "Remove client access" : "Share with client"}
+                          onClick={() => toggleDocAccess(doc)}
+                        >
+                          <Icon name="eye" size={13} color={isClientVisible ? "var(--blue)" : "var(--gray-400)"} />
+                          {isClientVisible ? "Shared" : "Share"}
+                        </button>
+                      )}
+                      {isViewable && (
+                        <button className="btn btn-ghost btn-sm" title="View in browser" onClick={() => handleView(doc)}>
+                          <Icon name="eye" size={14} />
+                        </button>
+                      )}
+                      <button className="btn btn-ghost btn-sm" title="Download" onClick={() => handleDownload(doc)}>
+                        <Icon name="download" size={14} />
+                      </button>
                     </div>
                   </div>
-                  <div style={{ display: "flex", gap: 6 }}>
-                    <button className="btn btn-ghost btn-sm"><Icon name="eye" size={14} /></button>
-                    <button className="btn btn-ghost btn-sm"><Icon name="download" size={14} /></button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
-        )}
+          );
+        })()}
 
         {/* TIMELINE */}
         {matterTab === "timeline" && (
@@ -1281,32 +1405,118 @@ const MatterDetail = ({ matter, messages, documents, invoices, showInternal, set
         )}
 
         {/* BILLING */}
-        {matterTab === "billing" && (
+        {matterTab === "billing" && (() => {
+          const [invoiceAction, setInvoiceAction] = useState(null); // loading state per invoice
+          const sendInvoice = async (invoice) => {
+            setInvoiceAction(invoice.id + "_send");
+            try {
+              const token = localStorage.getItem("cb_token");
+              const res = await fetch(`https://api.counselbridge.me/api/invoices/${invoice.id}/send`, {
+                method: "POST", headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" }
+              });
+              const data = await res.json();
+              if (res.ok) {
+                setInvoices(prev => prev.map(i => i.id === invoice.id ? { ...i, status: "SENT" } : i));
+              } else { alert(data?.error || "Failed to send invoice"); }
+            } catch(e) { console.error(e); }
+            setInvoiceAction(null);
+          };
+          const remindInvoice = async (invoice) => {
+            setInvoiceAction(invoice.id + "_remind");
+            try {
+              const token = localStorage.getItem("cb_token");
+              await fetch(`https://api.counselbridge.me/api/invoices/${invoice.id}/remind`, {
+                method: "POST", headers: { Authorization: "Bearer " + token }
+              });
+            } catch(e) { console.error(e); }
+            setInvoiceAction(null);
+          };
+          const voidInvoice = async (invoice) => {
+            if (!window.confirm(`Void invoice ${invoice.number}? This cannot be undone.`)) return;
+            setInvoiceAction(invoice.id + "_void");
+            try {
+              const token = localStorage.getItem("cb_token");
+              const res = await fetch(`https://api.counselbridge.me/api/invoices/${invoice.id}/void`, {
+                method: "POST", headers: { Authorization: "Bearer " + token }
+              });
+              if (res.ok) setInvoices(prev => prev.map(i => i.id === invoice.id ? { ...i, status: "VOID" } : i));
+            } catch(e) { console.error(e); }
+            setInvoiceAction(null);
+          };
+          return (
           <div className="fade-in">
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <h3 style={{ fontSize: 15, fontWeight: 600, color: "var(--gray-800)" }}>Invoices & Payments</h3>
-              <button className="btn btn-primary btn-sm" onClick={() => setShowInvoiceModal(true)}><Icon name="plus" size={13} />New Invoice</button>
+              <button className="btn btn-primary btn-sm" onClick={() => setShowInvoiceModal(true)}>
+                <Icon name="plus" size={13} />New Invoice
+              </button>
             </div>
+            {inv.length === 0 && (
+              <div style={{ textAlign: "center", padding: "40px 0", color: "var(--gray-400)", fontSize: 14 }}>
+                <Icon name="dollar" size={32} color="var(--gray-300)" />
+                <p style={{ marginTop: 10 }}>No invoices yet for this matter.</p>
+              </div>
+            )}
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {inv.map(invoice => (
-                <div key={invoice.id} className="card" style={{ padding: "14px 18px", display: "flex", alignItems: "center", gap: 14 }}>
-                  <div style={{ width: 40, height: 40, background: invoice.status === "paid" ? "var(--green-pale)" : invoice.status === "overdue" ? "var(--red-pale)" : "var(--blue-pale)", borderRadius: "var(--radius-sm)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <Icon name="dollar" size={18} color={invoice.status === "paid" ? "var(--green)" : invoice.status === "overdue" ? "var(--red)" : "var(--blue)"} />
+              {inv.map(invoice => {
+                const statusNorm = (invoice.status || "").toLowerCase();
+                const isPaid = statusNorm === "paid";
+                const isDraft = statusNorm === "draft";
+                const isSent = statusNorm === "sent";
+                const isOverdue = statusNorm === "overdue";
+                const isVoid = statusNorm === "void";
+                const amountFormatted = ((invoice.amountCents ? invoice.amountCents / 100 : invoice.amount) || 0)
+                  .toLocaleString("en-US", { style: "currency", currency: "USD" });
+                const statusColor = isPaid ? "var(--green)" : isOverdue ? "var(--red)" : isVoid ? "var(--gray-400)" : "var(--blue)";
+                const statusBg = isPaid ? "var(--green-pale)" : isOverdue ? "var(--red-pale)" : isVoid ? "var(--gray-100)" : "var(--blue-pale)";
+                return (
+                  <div key={invoice.id} className="card" style={{ padding: "14px 18px", display: "flex", alignItems: "center", gap: 14 }}>
+                    <div style={{ width: 40, height: 40, background: statusBg, borderRadius: "var(--radius-sm)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <Icon name="dollar" size={18} color={statusColor} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 14, fontWeight: 500, color: "var(--gray-800)", marginBottom: 2 }}>
+                        {invoice.description || invoice.desc}
+                      </div>
+                      <div style={{ fontSize: 12.5, color: "var(--gray-400)" }}>
+                        {invoice.number}
+                        {invoice.dueDate && ` · Due ${new Date(invoice.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`}
+                        {invoice.paidAt && ` · Paid ${new Date(invoice.paidAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`}
+                      </div>
+                    </div>
+                    <div style={{ fontWeight: 700, fontSize: 16, color: "var(--gray-900)", marginRight: 8 }}>{amountFormatted}</div>
+                    <span className={`badge ${isPaid ? "badge-green" : isOverdue ? "badge-red" : isVoid ? "badge-gray" : isDraft ? "badge-amber" : "badge-blue"}`}>
+                      {invoice.status}
+                    </span>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      {isDraft && (
+                        <button className="btn btn-primary btn-sm" disabled={invoiceAction === invoice.id + "_send"} onClick={() => sendInvoice(invoice)}>
+                          <Icon name="send" size={13} />{invoiceAction === invoice.id + "_send" ? "Sending…" : "Send"}
+                        </button>
+                      )}
+                      {(isSent || isOverdue) && (
+                        <button className="btn btn-secondary btn-sm" disabled={invoiceAction === invoice.id + "_remind"} onClick={() => remindInvoice(invoice)}>
+                          <Icon name="send" size={13} />{invoiceAction === invoice.id + "_remind" ? "Sending…" : "Remind"}
+                        </button>
+                      )}
+                      {(isSent || isOverdue) && (
+                        <button className="btn btn-ghost btn-sm" title="Pay now" onClick={() => setPayingInvoice({ ...invoice, amount: (invoice.amountCents / 100), desc: invoice.description })}>
+                          Pay
+                        </button>
+                      )}
+                      {!isPaid && !isVoid && (
+                        <button className="btn btn-danger btn-sm" disabled={invoiceAction === invoice.id + "_void"} onClick={() => voidInvoice(invoice)}>
+                          {invoiceAction === invoice.id + "_void" ? "…" : "Void"}
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 14, fontWeight: 500, color: "var(--gray-800)", marginBottom: 2 }}>{invoice.desc}</div>
-                    <div style={{ fontSize: 12.5, color: "var(--gray-400)" }}>{invoice.number} · Created {invoice.date} · Due {invoice.due}</div>
-                  </div>
-                  <div style={{ textAlign: "right", marginRight: 12 }}>
-                    <div style={{ fontSize: 16, fontWeight: 700, color: "var(--gray-900)" }}>${(invoice.amountCents ? invoice.amountCents/100 : (invoice.amount || 0)).toLocaleString()}</div>
-                  </div>
-                  <StatusBadge status={invoice.status} />
-                  {invoice.status !== "paid" && <button className="btn btn-secondary btn-sm"><Icon name="send" size={13} />Remind</button>}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
-        )}
+          );
+        })()}
       </div>
     </div>
   );
@@ -1361,6 +1571,39 @@ export default function CounselBridge() {
   const uploadInputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
 
+  // ─── SETTINGS STATE ────────────────────────────────────────────────────────
+  const [activeSettingsTab, setActiveSettingsTab] = useState("profile");
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [settingsSaved, setSettingsSaved] = useState(false);
+  const [settingsError, setSettingsError] = useState("");
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [logoUrl, setLogoUrl] = useState(null);
+  const logoInputRef = useRef(null);
+  const [firmForm, setFirmForm] = useState({
+    name: "", phone: "", address: "", website: "", barNumber: "", jurisdiction: "", slug: "",
+  });
+  const [teamMembers, setTeamMembers] = useState([]);
+  const [teamLoading, setTeamLoading] = useState(false);
+  const [inviteForm, setInviteForm] = useState({ email: "", firstName: "", lastName: "", role: "ATTORNEY" });
+  const [inviting, setInviting] = useState(false);
+  const [inviteMsg, setInviteMsg] = useState("");
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [firmStats, setFirmStats] = useState(null);
+  const [agentToggles, setAgentToggles] = useState({
+    MessageDraftAgent: true, PlainLanguageAgent: true, DigestAgent: true,
+    UrgencyClassifier: true, DocumentTagger: true, ClientChatAgent: false, MeetingSummaryAgent: false,
+  });
+  const [notifPrefs, setNotifPrefs] = useState({
+    newMessage: { inApp: true, email: true, sms: false },
+    documentUploaded: { inApp: true, email: true, sms: false },
+    invoicePaid: { inApp: true, email: true, sms: false },
+    deadline48h: { inApp: true, email: true, sms: true },
+    aiQueue: { inApp: true, email: false, sms: false },
+    meetingReminder: { inApp: true, email: true, sms: true },
+    newIntake: { inApp: true, email: true, sms: false },
+  });
+
 
   // ─── API LAYER ─────────────────────────────────────────────────────────────
   const API_BASE = "https://api.counselbridge.me";
@@ -1381,6 +1624,110 @@ export default function CounselBridge() {
     invoices: () => apiFetch("/api/invoices"),
     clientInvoices: () => apiFetch("/api/invoices/client"),
     aiQueue: () => apiFetch("/api/ai/queue"),
+    // Firm settings
+    getFirm: () => apiFetch("/api/firms/me"),
+    updateFirm: (d) => apiFetch("/api/firms/me", { method: "PUT", body: JSON.stringify(d) }),
+    getLogoUrl: () => apiFetch("/api/firms/me/logo-url"),
+    getTeam: () => apiFetch("/api/firms/me/team"),
+    inviteMember: (d) => apiFetch("/api/firms/me/team/invite", { method: "POST", body: JSON.stringify(d) }),
+    updateMemberRole: (id, role) => apiFetch(`/api/firms/me/team/${id}`, { method: "PATCH", body: JSON.stringify({ role }) }),
+    removeMember: (id) => apiFetch(`/api/firms/me/team/${id}`, { method: "DELETE" }),
+    getAuditLog: (p) => apiFetch(`/api/firms/me/audit-log?page=${p||1}&limit=50`),
+    getFirmStats: () => apiFetch("/api/firms/me/stats"),
+  };
+
+  // ─── SETTINGS HELPERS ─────────────────────────────────────────────────────
+  const loadFirmSettings = async () => {
+    try {
+      const [firmData, logoData, statsData] = await Promise.all([
+        API.getFirm(), API.getLogoUrl(), API.getFirmStats(),
+      ]);
+      if (firmData?.firm) {
+        const f = firmData.firm;
+        setFirmForm({ name: f.name||"", phone: f.phone||"", address: f.address||"", website: f.website||"", barNumber: f.barNumber||"", jurisdiction: f.jurisdiction||"", slug: f.slug||"" });
+        if (f.settings?.agentToggles) setAgentToggles(prev => ({ ...prev, ...f.settings.agentToggles }));
+        if (f.settings?.notifPrefs) setNotifPrefs(prev => ({ ...prev, ...f.settings.notifPrefs }));
+        setCurrentFirm(f);
+        localStorage.setItem("cb_firm", JSON.stringify(f));
+      }
+      if (logoData?.logoUrl) setLogoUrl(logoData.logoUrl);
+      if (statsData) setFirmStats(statsData);
+    } catch(e) { console.error("loadFirmSettings", e); }
+  };
+
+  const saveFirmProfile = async () => {
+    setSettingsSaving(true); setSettingsError(""); setSettingsSaved(false);
+    try {
+      const data = await API.updateFirm(firmForm);
+      if (data?.firm) {
+        setCurrentFirm(data.firm);
+        localStorage.setItem("cb_firm", JSON.stringify(data.firm));
+        setSettingsSaved(true);
+        setTimeout(() => setSettingsSaved(false), 3000);
+      }
+    } catch(e) { setSettingsError(e.message || "Failed to save"); }
+    setSettingsSaving(false);
+  };
+
+  const uploadLogo = async (file) => {
+    if (!file) return;
+    setLogoUploading(true);
+    try {
+      const token = localStorage.getItem("cb_token");
+      const formData = new FormData();
+      formData.append("logo", file);
+      const res = await fetch(API_BASE + "/api/firms/me/logo", {
+        method: "POST", headers: { Authorization: "Bearer " + token }, body: formData,
+      });
+      const data = await res.json();
+      if (res.ok && data.logoUrl) setLogoUrl(data.logoUrl);
+      else setSettingsError(data.error || "Logo upload failed");
+    } catch(e) { setSettingsError("Logo upload failed"); }
+    setLogoUploading(false);
+  };
+
+  const loadTeam = async () => {
+    setTeamLoading(true);
+    try {
+      const data = await API.getTeam();
+      if (data?.users) setTeamMembers(data.users);
+    } catch(e) { console.error("loadTeam", e); }
+    setTeamLoading(false);
+  };
+
+  const inviteMember = async () => {
+    if (!inviteForm.email || !inviteForm.firstName || !inviteForm.lastName) return;
+    setInviting(true); setInviteMsg("");
+    try {
+      const data = await API.inviteMember(inviteForm);
+      if (data?.user) {
+        setTeamMembers(prev => [...prev, data.user]);
+        setInviteForm({ email: "", firstName: "", lastName: "", role: "ATTORNEY" });
+        setInviteMsg(`✓ Invitation sent to ${inviteForm.email}`);
+        setTimeout(() => setInviteMsg(""), 4000);
+      }
+    } catch(e) { setInviteMsg("✗ " + (e.message || "Failed to invite")); }
+    setInviting(false);
+  };
+
+  const loadAuditLog = async () => {
+    setAuditLoading(true);
+    try {
+      const data = await API.getAuditLog(1);
+      if (data?.logs) setAuditLogs(data.logs);
+    } catch(e) { console.error("loadAuditLog", e); }
+    setAuditLoading(false);
+  };
+
+  const saveAgentSettings = async () => {
+    setSettingsSaving(true);
+    try {
+      const firm = await API.getFirm();
+      const currentSettings = firm?.firm?.settings || {};
+      await API.updateFirm({ settings: { ...currentSettings, agentToggles, notifPrefs } });
+      setSettingsSaved(true); setTimeout(() => setSettingsSaved(false), 3000);
+    } catch(e) { setSettingsError(e.message); }
+    setSettingsSaving(false);
   };
 
   // Load data after login
@@ -1394,6 +1741,21 @@ export default function CounselBridge() {
       API.clientInvoices().then(data => { if (data) setInvoices(Array.isArray(data) ? data : (data.invoices || [])); });
     }
   }, [view]);
+
+  // Load settings data when settings page opens
+  useEffect(() => {
+    if (activePage === "settings" && view === "attorney") {
+      loadFirmSettings();
+      loadTeam();
+    }
+  }, [activePage]);
+
+  // Load audit log when audit tab opens
+  useEffect(() => {
+    if (activePage === "settings" && activeSettingsTab === "audit" && view === "attorney") {
+      loadAuditLog();
+    }
+  }, [activeSettingsTab]);
 
   useEffect(() => {
     const el = document.getElementById("cb-styles");
@@ -2943,197 +3305,414 @@ export default function CounselBridge() {
             </div>
           )}
 
+
           {/* SETTINGS */}
           {activePage === "settings" && (
             <div className="scroll-y" style={{ flex: 1, padding: 24 }}>
-              <div style={{ marginBottom: 24 }}>
-                <h1 style={{ fontFamily: "var(--font-serif)", fontSize: 22, color: "var(--navy)", marginBottom: 2 }}>Settings</h1>
-                <p style={{ fontSize: 13.5, color: "var(--gray-500)" }}>Manage your firm, account, and platform preferences</p>
+              <div style={{ marginBottom: 20 }}>
+                <h1 style={{ fontFamily: "var(--font-serif)", fontSize: 22, color: "var(--navy)", marginBottom: 2 }}>Firm Settings</h1>
+                <p style={{ fontSize: 13.5, color: "var(--gray-500)" }}>Manage your firm profile, team, and platform preferences</p>
               </div>
+
+              {/* Saved / Error banners */}
+              {settingsSaved && (
+                <div style={{ background: "var(--green-pale)", border: "1px solid var(--green)", borderRadius: "var(--radius-md)", padding: "10px 14px", marginBottom: 16, fontSize: 13.5, color: "var(--green)", display: "flex", alignItems: "center", gap: 8 }}>
+                  <Icon name="check" size={14} color="var(--green)" /> Settings saved successfully
+                </div>
+              )}
+              {settingsError && (
+                <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: "var(--radius-md)", padding: "10px 14px", marginBottom: 16, fontSize: 13.5, color: "#dc2626", display: "flex", alignItems: "center", gap: 8 }}>
+                  <Icon name="alert" size={14} color="#dc2626" /> {settingsError}
+                  <button onClick={() => setSettingsError("")} style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", color: "#dc2626", fontSize: 16 }}>×</button>
+                </div>
+              )}
 
               <div style={{ display: "grid", gridTemplateColumns: "200px 1fr", gap: 24, maxWidth: 960 }}>
                 {/* Settings nav */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                   {[
                     ["Firm Profile", "briefcase", "profile"],
+                    ["Team Members", "users", "team"],
                     ["Security & Access", "shield", "security"],
                     ["Notifications", "bell", "notifications"],
-                    ["Integrations", "link", "integrations"],
                     ["AI Configuration", "cpu", "ai"],
+                    ["Integrations", "link", "integrations"],
                     ["Billing & Plan", "dollar", "billing-plan"],
                     ["Audit Log", "activity", "audit"],
                   ].map(([label, icon, key]) => (
-                    <div key={key} className="nav-item" style={{ background: "transparent", color: "var(--gray-600)", padding: "9px 12px" }}
-                      onMouseEnter={e => e.currentTarget.style.background = "var(--gray-100)"}
-                      onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-                      <Icon name={icon} size={15} color="var(--gray-400)" />
-                      <span style={{ fontSize: 13.5, color: "var(--gray-700)" }}>{label}</span>
+                    <div key={key}
+                      className="nav-item"
+                      onClick={() => setActiveSettingsTab(key)}
+                      style={{ background: activeSettingsTab === key ? "var(--blue-pale)" : "transparent", color: activeSettingsTab === key ? "var(--blue)" : "var(--gray-600)", padding: "9px 12px", cursor: "pointer", borderRadius: "var(--radius-sm)" }}>
+                      <Icon name={icon} size={15} color={activeSettingsTab === key ? "var(--blue)" : "var(--gray-400)"} />
+                      <span style={{ fontSize: 13.5 }}>{label}</span>
                     </div>
                   ))}
                 </div>
 
                 {/* Settings content */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-                  {/* Firm Profile */}
-                  <div className="card" style={{ padding: 24 }}>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: "var(--gray-900)", marginBottom: 18 }}>Firm Profile</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
-                      <div><label>Firm Name</label><input className="input" defaultValue="Rivera & Associates" /></div>
-                      <div><label>Portal URL</label><input className="input" defaultValue="rivera.counselbridge.io" /></div>
-                      <div><label>Practice Area(s)</label><input className="input" defaultValue="Family Law, Litigation, Estate Planning, Corporate" /></div>
-                      <div><label>Firm Phone</label><input className="input" defaultValue="(415) 555-0182" /></div>
-                      <div><label>State Bar Number</label><input className="input" defaultValue="CA Bar #294812" /></div>
-                      <div><label>Jurisdiction</label><input className="input" defaultValue="California" /></div>
-                    </div>
-                    <div style={{ marginBottom: 16 }}>
-                      <label>Firm Address</label>
-                      <input className="input" defaultValue="1234 Market Street, Suite 500, San Francisco, CA 94102" />
-                    </div>
-                    <div style={{ display: "flex", gap: 10, alignItems: "center", padding: "14px 16px", background: "var(--gray-50)", borderRadius: "var(--radius-md)", border: "1.5px dashed var(--gray-300)", marginBottom: 16, cursor: "pointer" }}>
-                      <Icon name="upload" size={18} color="var(--gray-400)" />
-                      <div>
-                        <div style={{ fontSize: 13.5, fontWeight: 500, color: "var(--gray-700)" }}>Upload firm logo</div>
-                        <div style={{ fontSize: 12, color: "var(--gray-400)" }}>PNG or SVG · Shown on client portal and emails</div>
-                      </div>
-                    </div>
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <button className="btn btn-primary btn-sm">Save Changes</button>
-                      <button className="btn btn-secondary btn-sm">Preview Portal</button>
-                    </div>
-                  </div>
 
-                  {/* Security */}
-                  <div className="card" style={{ padding: 24 }}>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: "var(--gray-900)", marginBottom: 18 }}>Security & Access</div>
-                    {[
-                      { label: "Multi-Factor Authentication", desc: "Required for all attorney accounts", enabled: true },
-                      { label: "Session Timeout", desc: "Auto-logout after 30 minutes of inactivity", enabled: true },
-                      { label: "Login Alerts", desc: "Email notification on new device login", enabled: true },
-                      { label: "Client Magic Links", desc: "Allow clients to login without password", enabled: false },
-                      { label: "IP Allowlisting", desc: "Restrict attorney access to approved IP ranges", enabled: false },
-                    ].map(setting => (
-                      <div key={setting.label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: "1px solid var(--gray-100)" }}>
-                        <div>
-                          <div style={{ fontSize: 13.5, fontWeight: 500, color: "var(--gray-800)" }}>{setting.label}</div>
-                          <div style={{ fontSize: 12.5, color: "var(--gray-400)" }}>{setting.desc}</div>
-                        </div>
-                        <div style={{ width: 44, height: 24, borderRadius: 12, background: setting.enabled ? "var(--blue)" : "var(--gray-200)", cursor: "pointer", position: "relative", transition: "background 0.2s", flexShrink: 0 }}>
-                          <div style={{ width: 18, height: 18, borderRadius: "50%", background: "white", position: "absolute", top: 3, left: setting.enabled ? 23 : 3, transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  {/* ── FIRM PROFILE ── */}
+                  {activeSettingsTab === "profile" && (
+                    <>
+                      <div className="card" style={{ padding: 24 }}>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: "var(--gray-900)", marginBottom: 18 }}>Firm Profile</div>
 
-                  {/* Notifications */}
-                  <div className="card" style={{ padding: 24 }}>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: "var(--gray-900)", marginBottom: 18 }}>Notification Preferences</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto auto", gap: "10px 20px", alignItems: "center", marginBottom: 12 }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: "var(--gray-400)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Event</div>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: "var(--gray-400)", textTransform: "uppercase", letterSpacing: "0.06em" }}>In-App</div>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: "var(--gray-400)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Email</div>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: "var(--gray-400)", textTransform: "uppercase", letterSpacing: "0.06em" }}>SMS</div>
-                      {[
-                        ["New client message", true, true, false],
-                        ["Document uploaded", true, true, false],
-                        ["Invoice paid", true, true, false],
-                        ["Deadline in 48 hours", true, true, true],
-                        ["AI queue item", true, false, false],
-                        ["Meeting reminder (1h)", true, true, true],
-                        ["New intake form", true, true, false],
-                      ].map(([label, inApp, email, sms]) => (
-                        <>
-                          <div key={label} style={{ fontSize: 13.5, color: "var(--gray-700)" }}>{label}</div>
-                          {[inApp, email, sms].map((v, i) => (
-                            <div key={i} style={{ width: 36, height: 20, borderRadius: 10, background: v ? "var(--blue)" : "var(--gray-200)", cursor: "pointer", position: "relative", margin: "0 auto" }}>
-                              <div style={{ width: 14, height: 14, borderRadius: "50%", background: "white", position: "absolute", top: 3, left: v ? 19 : 3, transition: "left 0.2s" }} />
-                            </div>
-                          ))}
-                        </>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Integrations */}
-                  <div className="card" style={{ padding: 24 }}>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: "var(--gray-900)", marginBottom: 18 }}>Integrations</div>
-                    {[
-                      { name: "Google Calendar", desc: "Sync meetings and deadlines", icon: "calendar", connected: true },
-                      { name: "Stripe", desc: "Payment processing", icon: "dollar", connected: true },
-                      { name: "Microsoft Outlook", desc: "Calendar and email sync", icon: "mail", connected: false },
-                      { name: "Dropbox Sign", desc: "E-signature workflows", icon: "file", connected: false },
-                      { name: "Clio", desc: "Practice management sync", icon: "briefcase", connected: false },
-                      { name: "Twilio SMS", desc: "Client text notifications", icon: "phone", connected: true },
-                    ].map(intg => (
-                      <div key={intg.name} style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 0", borderBottom: "1px solid var(--gray-100)" }}>
-                        <div style={{ width: 38, height: 38, borderRadius: "var(--radius-sm)", background: intg.connected ? "var(--green-pale)" : "var(--gray-100)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                          <Icon name={intg.icon} size={16} color={intg.connected ? "var(--green)" : "var(--gray-400)"} />
-                        </div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 13.5, fontWeight: 500, color: "var(--gray-800)" }}>{intg.name}</div>
-                          <div style={{ fontSize: 12.5, color: "var(--gray-400)" }}>{intg.desc}</div>
-                        </div>
-                        {intg.connected
-                          ? <span className="badge badge-green" style={{ fontSize: 11 }}>Connected</span>
-                          : <button className="btn btn-secondary btn-sm">Connect</button>
-                        }
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* AI Config */}
-                  <div className="card" style={{ padding: 24 }}>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: "var(--gray-900)", marginBottom: 6 }}>AI Configuration</div>
-                    <div style={{ fontSize: 13, color: "var(--gray-500)", marginBottom: 18 }}>Configure which AI agents are active and how they behave. All client-facing AI output requires attorney approval.</div>
-                    {[
-                      { name: "MessageDraftAgent", desc: "Draft reply suggestions when you open a message thread", enabled: true },
-                      { name: "PlainLanguageAgent", desc: "Rewrite case updates in plain English for clients", enabled: true },
-                      { name: "DigestAgent", desc: "Send daily matter briefing at 7:00 AM", enabled: true },
-                      { name: "UrgencyClassifier", desc: "Score intake forms for urgency and practice area", enabled: true },
-                      { name: "DocumentTagger", desc: "Auto-classify uploaded document types", enabled: true },
-                      { name: "ClientChatAgent", desc: "Answer client process questions in the portal (never legal advice)", enabled: false },
-                      { name: "MeetingSummaryAgent", desc: "Generate meeting summaries from transcripts (Phase 2)", enabled: false },
-                    ].map(agent => (
-                      <div key={agent.name} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "12px 0", borderBottom: "1px solid var(--gray-100)" }}>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--gray-800)", display: "flex", alignItems: "center", gap: 6 }}>
-                            <span className="ai-badge" style={{ fontSize: 10 }}><Icon name="cpu" size={9} color="var(--purple)" />AI</span>
-                            {agent.name}
+                        {/* Logo */}
+                        <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20 }}>
+                          <div style={{ width: 72, height: 72, borderRadius: "var(--radius-md)", background: "var(--gray-100)", border: "1.5px solid var(--gray-200)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            {logoUrl
+                              ? <img src={logoUrl} alt="Firm logo" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                              : <Icon name="briefcase" size={28} color="var(--gray-300)" />
+                            }
                           </div>
-                          <div style={{ fontSize: 12.5, color: "var(--gray-400)", marginTop: 2 }}>{agent.desc}</div>
+                          <div>
+                            <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--gray-800)", marginBottom: 4 }}>Firm Logo</div>
+                            <div style={{ fontSize: 12, color: "var(--gray-400)", marginBottom: 8 }}>PNG, JPG, SVG or WEBP · Max 5MB · Shown on client portal and emails</div>
+                            <input ref={logoInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={e => uploadLogo(e.target.files[0])} />
+                            <button className="btn btn-secondary btn-sm" onClick={() => logoInputRef.current?.click()} disabled={logoUploading}>
+                              <Icon name="upload" size={13} />
+                              {logoUploading ? "Uploading…" : "Upload Logo"}
+                            </button>
+                          </div>
                         </div>
-                        <div style={{ width: 44, height: 24, borderRadius: 12, background: agent.enabled ? "var(--purple)" : "var(--gray-200)", cursor: "pointer", position: "relative", flexShrink: 0, marginLeft: 16, marginTop: 2 }}>
-                          <div style={{ width: 18, height: 18, borderRadius: "50%", background: "white", position: "absolute", top: 3, left: agent.enabled ? 23 : 3 }} />
+
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+                          <div>
+                            <label>Firm Name</label>
+                            <input className="input" value={firmForm.name} onChange={e => setFirmForm(p => ({ ...p, name: e.target.value }))} placeholder="Your Firm Name" />
+                          </div>
+                          <div>
+                            <label>Portal Slug</label>
+                            <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
+                              <span style={{ background: "var(--gray-100)", border: "1.5px solid var(--gray-200)", borderRight: "none", borderRadius: "var(--radius-sm) 0 0 var(--radius-sm)", padding: "0 10px", height: 38, display: "flex", alignItems: "center", fontSize: 13, color: "var(--gray-400)", whiteSpace: "nowrap" }}>counselbridge.me/p/</span>
+                              <input className="input" value={firmForm.slug} onChange={e => setFirmForm(p => ({ ...p, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") }))} placeholder="your-firm" style={{ borderRadius: "0 var(--radius-sm) var(--radius-sm) 0", flex: 1 }} />
+                            </div>
+                          </div>
+                          <div>
+                            <label>Practice Area(s)</label>
+                            <input className="input" value={firmForm.practiceAreas} onChange={e => setFirmForm(p => ({ ...p, practiceAreas: e.target.value }))} placeholder="Family Law, Litigation, Estate Planning…" />
+                          </div>
+                          <div>
+                            <label>Firm Phone</label>
+                            <input className="input" value={firmForm.phone} onChange={e => setFirmForm(p => ({ ...p, phone: e.target.value }))} placeholder="(415) 555-0000" />
+                          </div>
+                          <div>
+                            <label>State Bar Number</label>
+                            <input className="input" value={firmForm.barNumber} onChange={e => setFirmForm(p => ({ ...p, barNumber: e.target.value }))} placeholder="CA Bar #000000" />
+                          </div>
+                          <div>
+                            <label>Jurisdiction</label>
+                            <input className="input" value={firmForm.jurisdiction} onChange={e => setFirmForm(p => ({ ...p, jurisdiction: e.target.value }))} placeholder="California" />
+                          </div>
+                          <div>
+                            <label>Website</label>
+                            <input className="input" value={firmForm.website} onChange={e => setFirmForm(p => ({ ...p, website: e.target.value }))} placeholder="https://yourfirm.com" />
+                          </div>
+                        </div>
+                        <div style={{ marginBottom: 16 }}>
+                          <label>Firm Address</label>
+                          <input className="input" value={firmForm.address} onChange={e => setFirmForm(p => ({ ...p, address: e.target.value }))} placeholder="123 Main St, Suite 100, San Francisco, CA 94102" />
+                        </div>
+
+                        {firmStats && (
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16, padding: "14px 0", borderTop: "1px solid var(--gray-100)", borderBottom: "1px solid var(--gray-100)" }}>
+                            {[
+                              ["Active Matters", firmStats.activeMatters],
+                              ["Team Members", firmStats.teamCount],
+                              ["Outstanding", `$${((firmStats.outstandingInvoices?.amountCents || 0) / 100).toLocaleString()}`],
+                              ["Paid This Month", `$${((firmStats.paidThisMonth?.amountCents || 0) / 100).toLocaleString()}`],
+                            ].map(([label, val]) => (
+                              <div key={label} style={{ textAlign: "center" }}>
+                                <div style={{ fontSize: 20, fontWeight: 700, color: "var(--navy)" }}>{val}</div>
+                                <div style={{ fontSize: 11, color: "var(--gray-400)", marginTop: 2 }}>{label}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <button className="btn btn-primary btn-sm" onClick={saveFirmProfile} disabled={settingsSaving}>
+                            {settingsSaving ? "Saving…" : "Save Changes"}
+                          </button>
+                          <button className="btn btn-secondary btn-sm" onClick={() => window.open(`https://counselbridge.me/p/${firmForm.slug}`, "_blank")}>
+                            Preview Portal
+                          </button>
                         </div>
                       </div>
-                    ))}
-                  </div>
+                    </>
+                  )}
 
-                  {/* Audit log */}
-                  <div className="card" style={{ padding: 24 }}>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: "var(--gray-900)", marginBottom: 4 }}>Recent Audit Log</div>
-                    <div style={{ fontSize: 13, color: "var(--gray-500)", marginBottom: 16 }}>Immutable record of all platform actions · Retained 7 years</div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+                  {/* ── TEAM MEMBERS ── */}
+                  {activeSettingsTab === "team" && (
+                    <>
+                      <div className="card" style={{ padding: 24 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+                          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--gray-900)" }}>Team Members</div>
+                          <span style={{ fontSize: 12, color: "var(--gray-400)" }}>{teamMembers.length} member{teamMembers.length !== 1 ? "s" : ""}</span>
+                        </div>
+
+                        {teamLoading ? (
+                          <div style={{ textAlign: "center", padding: 32, color: "var(--gray-400)" }}>Loading team…</div>
+                        ) : teamMembers.length === 0 ? (
+                          <div style={{ textAlign: "center", padding: 32, color: "var(--gray-400)" }}>No team members yet</div>
+                        ) : teamMembers.map(member => (
+                          <div key={member.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: "1px solid var(--gray-100)" }}>
+                            <div style={{ width: 36, height: 36, borderRadius: "50%", background: "var(--blue-pale)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                              <span style={{ fontSize: 13, fontWeight: 700, color: "var(--blue)" }}>{member.firstName[0]}{member.lastName[0]}</span>
+                            </div>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--gray-800)" }}>{member.firstName} {member.lastName}</div>
+                              <div style={{ fontSize: 12, color: "var(--gray-400)" }}>{member.email} {member.lastActiveAt ? `· Active ${new Date(member.lastActiveAt).toLocaleDateString()}` : "· Never logged in"}</div>
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                              <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 20, background: member.role === "OWNER" ? "var(--navy)" : member.role === "ATTORNEY" ? "var(--blue-pale)" : "var(--gray-100)", color: member.role === "OWNER" ? "white" : member.role === "ATTORNEY" ? "var(--blue)" : "var(--gray-600)", fontWeight: 600 }}>
+                                {member.role}
+                              </span>
+                              {member.mfaEnabled && <Icon name="shield" size={12} color="var(--green)" title="MFA enabled" />}
+                              {member.id !== currentUser?.id && member.role !== "OWNER" && (
+                                <button className="btn btn-ghost btn-sm" style={{ fontSize: 11, color: "var(--red, #dc2626)" }}
+                                  onClick={async () => { if (confirm(`Remove ${member.firstName} ${member.lastName}?`)) { await API.removeMember(member.id); loadTeam(); } }}>
+                                  Remove
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="card" style={{ padding: 24 }}>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: "var(--gray-900)", marginBottom: 16 }}>Invite Team Member</div>
+                        {inviteMsg && (
+                          <div style={{ padding: "10px 14px", borderRadius: "var(--radius-sm)", marginBottom: 14, fontSize: 13, background: inviteMsg.startsWith("✓") ? "var(--green-pale)" : "#fef2f2", color: inviteMsg.startsWith("✓") ? "var(--green)" : "#dc2626" }}>
+                            {inviteMsg}
+                          </div>
+                        )}
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+                          <div><label>First Name</label><input className="input" value={inviteForm.firstName} onChange={e => setInviteForm(p => ({ ...p, firstName: e.target.value }))} placeholder="Jane" /></div>
+                          <div><label>Last Name</label><input className="input" value={inviteForm.lastName} onChange={e => setInviteForm(p => ({ ...p, lastName: e.target.value }))} placeholder="Smith" /></div>
+                          <div><label>Email</label><input className="input" type="email" value={inviteForm.email} onChange={e => setInviteForm(p => ({ ...p, email: e.target.value }))} placeholder="jane@yourfirm.com" /></div>
+                          <div>
+                            <label>Role</label>
+                            <select className="input" value={inviteForm.role} onChange={e => setInviteForm(p => ({ ...p, role: e.target.value }))}>
+                              <option value="ATTORNEY">Attorney</option>
+                              <option value="PARALEGAL">Paralegal</option>
+                              <option value="ADMIN">Admin</option>
+                            </select>
+                          </div>
+                        </div>
+                        <button className="btn btn-primary btn-sm" onClick={inviteMember} disabled={inviting || !inviteForm.email}>
+                          <Icon name="mail" size={13} />
+                          {inviting ? "Sending invite…" : "Send Invitation"}
+                        </button>
+                      </div>
+                    </>
+                  )}
+
+                  {/* ── SECURITY ── */}
+                  {activeSettingsTab === "security" && (
+                    <div className="card" style={{ padding: 24 }}>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: "var(--gray-900)", marginBottom: 18 }}>Security & Access</div>
                       {[
-                        { time: "Today 10:32 AM", user: "Alex Rivera", action: "Approved AI-generated case update", matter: "Johnson Divorce", type: "ai" },
-                        { time: "Today 9:14 AM", user: "Sarah Johnson", action: "Uploaded 3 documents", matter: "Johnson Divorce", type: "document" },
-                        { time: "Today 8:47 AM", user: "Alex Rivera", action: "Sent message to client", matter: "Johnson Divorce", type: "message" },
-                        { time: "Yesterday 5:01 PM", user: "Alex Rivera", action: "Sent invoice INV-2024-009", matter: "Chen v. Realty", type: "billing" },
-                        { time: "Yesterday 3:22 PM", user: "Amy Chen", action: "Logged in to client portal", matter: "Chen v. Realty", type: "auth" },
-                        { time: "Yesterday 2:18 PM", user: "Priya Patel", action: "Added internal note", matter: "Johnson Divorce", type: "note" },
-                      ].map((log, i) => (
-                        <div key={i} style={{ display: "flex", gap: 12, padding: "9px 0", borderBottom: i < 5 ? "1px solid var(--gray-100)" : "none", alignItems: "flex-start" }}>
-                          <div style={{ width: 28, height: 28, borderRadius: 7, background: log.type === "ai" ? "var(--purple-pale)" : log.type === "document" ? "var(--blue-pale)" : log.type === "billing" ? "var(--green-pale)" : log.type === "auth" ? "var(--teal-pale)" : "var(--gray-100)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>
-                            <Icon name={log.type === "ai" ? "cpu" : log.type === "document" ? "file" : log.type === "billing" ? "dollar" : log.type === "auth" ? "lock" : "activity"} size={13} color={log.type === "ai" ? "var(--purple)" : log.type === "document" ? "var(--blue)" : log.type === "billing" ? "var(--green)" : log.type === "auth" ? "var(--teal)" : "var(--gray-400)"} />
+                        { label: "Multi-Factor Authentication", desc: "Required for all attorney accounts", key: "mfa", enabled: true },
+                        { label: "Session Timeout", desc: "Auto-logout after 30 minutes of inactivity", key: "timeout", enabled: true },
+                        { label: "Login Alerts", desc: "Email notification on new device login", key: "loginAlerts", enabled: true },
+                        { label: "Client Magic Links", desc: "Allow clients to login without a password via email link", key: "magicLinks", enabled: false },
+                        { label: "IP Allowlisting", desc: "Restrict attorney access to approved IP ranges", key: "ipAllowlist", enabled: false },
+                      ].map(s => (
+                        <div key={s.key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: "1px solid var(--gray-100)" }}>
+                          <div>
+                            <div style={{ fontSize: 13.5, fontWeight: 500, color: "var(--gray-800)" }}>{s.label}</div>
+                            <div style={{ fontSize: 12.5, color: "var(--gray-400)" }}>{s.desc}</div>
+                          </div>
+                          <div style={{ width: 44, height: 24, borderRadius: 12, background: s.enabled ? "var(--blue)" : "var(--gray-200)", cursor: "pointer", position: "relative", flexShrink: 0 }}>
+                            <div style={{ width: 18, height: 18, borderRadius: "50%", background: "white", position: "absolute", top: 3, left: s.enabled ? 23 : 3, transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
+                          </div>
+                        </div>
+                      ))}
+                      <div style={{ marginTop: 16, padding: "12px 14px", background: "var(--blue-pale)", borderRadius: "var(--radius-sm)", fontSize: 13, color: "var(--blue)" }}>
+                        <strong>MFA enforcement</strong> coming in next release. Attorneys will be prompted to set up TOTP on next login.
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── NOTIFICATIONS ── */}
+                  {activeSettingsTab === "notifications" && (
+                    <div className="card" style={{ padding: 24 }}>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: "var(--gray-900)", marginBottom: 18 }}>Notification Preferences</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto auto", gap: "10px 24px", alignItems: "center", marginBottom: 12 }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: "var(--gray-400)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Event</div>
+                        {["In-App", "Email", "SMS"].map(h => (
+                          <div key={h} style={{ fontSize: 11, fontWeight: 700, color: "var(--gray-400)", textTransform: "uppercase", letterSpacing: "0.06em", textAlign: "center" }}>{h}</div>
+                        ))}
+                        {[
+                          ["New client message", "newMessage"],
+                          ["Document uploaded", "documentUploaded"],
+                          ["Invoice paid", "invoicePaid"],
+                          ["Deadline in 48 hours", "deadline48h"],
+                          ["AI queue item", "aiQueue"],
+                          ["Meeting reminder (1h)", "meetingReminder"],
+                          ["New intake submission", "newIntake"],
+                        ].map(([label, key]) => (
+                          <>
+                            <div key={label} style={{ fontSize: 13.5, color: "var(--gray-700)" }}>{label}</div>
+                            {["inApp", "email", "sms"].map(ch => {
+                              const val = notifPrefs[key]?.[ch] ?? false;
+                              return (
+                                <div key={ch}
+                                  onClick={() => setNotifPrefs(p => ({ ...p, [key]: { ...p[key], [ch]: !val } }))}
+                                  style={{ width: 36, height: 20, borderRadius: 10, background: val ? "var(--blue)" : "var(--gray-200)", cursor: "pointer", position: "relative", margin: "0 auto", transition: "background 0.2s" }}>
+                                  <div style={{ width: 14, height: 14, borderRadius: "50%", background: "white", position: "absolute", top: 3, left: val ? 19 : 3, transition: "left 0.2s" }} />
+                                </div>
+                              );
+                            })}
+                          </>
+                        ))}
+                      </div>
+                      <button className="btn btn-primary btn-sm" onClick={saveAgentSettings} disabled={settingsSaving} style={{ marginTop: 8 }}>
+                        {settingsSaving ? "Saving…" : "Save Preferences"}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* ── AI CONFIG ── */}
+                  {activeSettingsTab === "ai" && (
+                    <div className="card" style={{ padding: 24 }}>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: "var(--gray-900)", marginBottom: 6 }}>AI Configuration</div>
+                      <div style={{ fontSize: 13, color: "var(--gray-500)", marginBottom: 18 }}>Configure which AI agents are active. All client-facing AI output requires attorney approval before delivery.</div>
+                      {[
+                        { name: "MessageDraftAgent", desc: "Draft reply suggestions when you open a message thread", zone: 2 },
+                        { name: "PlainLanguageAgent", desc: "Rewrite case updates in plain English for clients", zone: 2 },
+                        { name: "DigestAgent", desc: "Send daily matter briefing at 7:00 AM", zone: 1 },
+                        { name: "UrgencyClassifier", desc: "Score intake forms for urgency and practice area", zone: 1 },
+                        { name: "DocumentTagger", desc: "Auto-classify uploaded document types", zone: 1 },
+                        { name: "ClientChatAgent", desc: "Answer client process questions in the portal (never legal advice)", zone: 2 },
+                        { name: "MeetingSummaryAgent", desc: "Generate meeting summaries from transcripts (Phase 2)", zone: 2 },
+                      ].map(agent => (
+                        <div key={agent.name} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "12px 0", borderBottom: "1px solid var(--gray-100)" }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--gray-800)", display: "flex", alignItems: "center", gap: 6 }}>
+                              <span className="ai-badge" style={{ fontSize: 10 }}><Icon name="cpu" size={9} color="var(--purple)" />AI</span>
+                              {agent.name}
+                              {agent.zone === 2 && <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 10, background: "var(--yellow-pale, #fefce8)", color: "var(--yellow-600, #ca8a04)", fontWeight: 600 }}>Requires Approval</span>}
+                            </div>
+                            <div style={{ fontSize: 12.5, color: "var(--gray-400)", marginTop: 2 }}>{agent.desc}</div>
+                          </div>
+                          <div
+                            onClick={() => setAgentToggles(p => ({ ...p, [agent.name]: !p[agent.name] }))}
+                            style={{ width: 44, height: 24, borderRadius: 12, background: agentToggles[agent.name] ? "var(--purple)" : "var(--gray-200)", cursor: "pointer", position: "relative", flexShrink: 0, marginLeft: 16, marginTop: 2, transition: "background 0.2s" }}>
+                            <div style={{ width: 18, height: 18, borderRadius: "50%", background: "white", position: "absolute", top: 3, left: agentToggles[agent.name] ? 23 : 3, transition: "left 0.2s" }} />
+                          </div>
+                        </div>
+                      ))}
+                      <button className="btn btn-primary btn-sm" onClick={saveAgentSettings} disabled={settingsSaving} style={{ marginTop: 16 }}>
+                        {settingsSaving ? "Saving…" : "Save AI Settings"}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* ── INTEGRATIONS ── */}
+                  {activeSettingsTab === "integrations" && (
+                    <div className="card" style={{ padding: 24 }}>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: "var(--gray-900)", marginBottom: 18 }}>Integrations</div>
+                      {[
+                        { name: "Google Calendar", desc: "Sync meetings and deadlines", icon: "calendar", connected: true, note: "Syncing 3 calendars" },
+                        { name: "Stripe", desc: "Payment processing for invoices", icon: "dollar", connected: true, note: "Live mode active" },
+                        { name: "Microsoft Outlook", desc: "Calendar and email sync", icon: "mail", connected: false },
+                        { name: "Dropbox Sign", desc: "E-signature workflows (Phase 2)", icon: "file", connected: false },
+                        { name: "Clio", desc: "Practice management sync", icon: "briefcase", connected: false },
+                        { name: "Twilio SMS", desc: "Client text notifications", icon: "phone", connected: false },
+                      ].map(intg => (
+                        <div key={intg.name} style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 0", borderBottom: "1px solid var(--gray-100)" }}>
+                          <div style={{ width: 38, height: 38, borderRadius: "var(--radius-sm)", background: intg.connected ? "var(--green-pale)" : "var(--gray-100)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <Icon name={intg.icon} size={16} color={intg.connected ? "var(--green)" : "var(--gray-400)"} />
                           </div>
                           <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: 13.5, color: "var(--gray-800)" }}><span style={{ fontWeight: 600 }}>{log.user}</span> — {log.action}</div>
-                            <div style={{ fontSize: 12, color: "var(--gray-400)" }}>{log.time} · {log.matter}</div>
+                            <div style={{ fontSize: 13.5, fontWeight: 500, color: "var(--gray-800)" }}>{intg.name}</div>
+                            <div style={{ fontSize: 12.5, color: "var(--gray-400)" }}>{intg.connected ? intg.note : intg.desc}</div>
                           </div>
+                          {intg.connected
+                            ? <span className="badge badge-green" style={{ fontSize: 11 }}>Connected</span>
+                            : <button className="btn btn-secondary btn-sm">Connect</button>
+                          }
                         </div>
                       ))}
                     </div>
-                    <button className="btn btn-secondary btn-sm" style={{ marginTop: 14 }}><Icon name="download" size={13} />Export Audit Log (CSV)</button>
-                  </div>
+                  )}
+
+                  {/* ── BILLING & PLAN ── */}
+                  {activeSettingsTab === "billing-plan" && (
+                    <div className="card" style={{ padding: 24 }}>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: "var(--gray-900)", marginBottom: 18 }}>Billing & Plan</div>
+                      <div style={{ padding: "16px 20px", background: "var(--blue-pale)", borderRadius: "var(--radius-md)", marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <div>
+                          <div style={{ fontSize: 16, fontWeight: 700, color: "var(--blue)" }}>{(currentFirm?.plan || "STARTER")} Plan</div>
+                          <div style={{ fontSize: 13, color: "var(--blue)", opacity: 0.8, marginTop: 2 }}>{teamMembers.length} seat{teamMembers.length !== 1 ? "s" : ""} · All MVP features included</div>
+                        </div>
+                        <button className="btn btn-primary btn-sm">Upgrade Plan</button>
+                      </div>
+                      <div style={{ fontSize: 13, color: "var(--gray-500)" }}>Billing managed through Stripe. Contact <a href="mailto:support@counselbridge.me" style={{ color: "var(--blue)" }}>support@counselbridge.me</a> for invoicing or plan changes.</div>
+                    </div>
+                  )}
+
+                  {/* ── AUDIT LOG ── */}
+                  {activeSettingsTab === "audit" && (
+                    <div className="card" style={{ padding: 24 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: "var(--gray-900)" }}>Audit Log</div>
+                        <button className="btn btn-secondary btn-sm" onClick={loadAuditLog} disabled={auditLoading}>
+                          <Icon name="refresh" size={13} /> Refresh
+                        </button>
+                      </div>
+                      <div style={{ fontSize: 13, color: "var(--gray-500)", marginBottom: 16 }}>Immutable record of all platform actions · Retained 7 years</div>
+
+                      {auditLoading ? (
+                        <div style={{ textAlign: "center", padding: 32, color: "var(--gray-400)" }}>Loading audit log…</div>
+                      ) : auditLogs.length === 0 ? (
+                        <div style={{ textAlign: "center", padding: 32, color: "var(--gray-400)" }}>No audit log entries yet</div>
+                      ) : (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+                          {auditLogs.map((log, i) => {
+                            const actionType = log.action?.split(".")[0] || "other";
+                            const colors = { firm: "var(--blue)", message: "var(--teal)", document: "var(--blue)", invoice: "var(--green)", ai: "var(--purple)", auth: "var(--navy)" };
+                            const icons = { firm: "briefcase", message: "message", document: "file", invoice: "dollar", ai: "cpu", auth: "lock" };
+                            const bgColors = { firm: "var(--blue-pale)", message: "var(--teal-pale)", document: "var(--blue-pale)", invoice: "var(--green-pale)", ai: "var(--purple-pale)", auth: "var(--gray-100)" };
+                            const c = colors[actionType] || "var(--gray-400)";
+                            const ic = icons[actionType] || "activity";
+                            const bg = bgColors[actionType] || "var(--gray-100)";
+                            return (
+                              <div key={log.id} style={{ display: "flex", gap: 12, padding: "9px 0", borderBottom: i < auditLogs.length - 1 ? "1px solid var(--gray-100)" : "none", alignItems: "flex-start" }}>
+                                <div style={{ width: 28, height: 28, borderRadius: 7, background: bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>
+                                  <Icon name={ic} size={13} color={c} />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                  <div style={{ fontSize: 13.5, color: "var(--gray-800)" }}>
+                                    <span style={{ fontWeight: 600 }}>{log.user ? `${log.user.firstName} ${log.user.lastName}` : "System"}</span>
+                                    {" — "}
+                                    <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, background: "var(--gray-100)", padding: "1px 5px", borderRadius: 4 }}>{log.action}</span>
+                                  </div>
+                                  <div style={{ fontSize: 12, color: "var(--gray-400)" }}>{new Date(log.createdAt).toLocaleString()} {log.ipAddress ? `· ${log.ipAddress}` : ""}</div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      <button className="btn btn-secondary btn-sm" style={{ marginTop: 14 }}
+                        onClick={() => {
+                          const csv = ["timestamp,user,action,entity_id,ip", ...auditLogs.map(l => `${l.createdAt},"${l.user ? l.user.firstName + " " + l.user.lastName : "System"}",${l.action},${l.entityId||""},${l.ipAddress||""}`)].join("\n");
+                          const a = document.createElement("a");
+                          a.href = "data:text/csv;charset=utf-8," + encodeURIComponent(csv);
+                          a.download = `counselbridge-audit-${new Date().toISOString().split("T")[0]}.csv`;
+                          a.click();
+                        }}>
+                        <Icon name="download" size={13} />Export Audit Log (CSV)
+                      </button>
+                    </div>
+                  )}
+
                 </div>
               </div>
             </div>
